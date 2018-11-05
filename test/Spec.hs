@@ -20,3 +20,22 @@ main = hspec $ do
 
         it "Reads status field" $ do
             fmap status (parse parseObjectType "" text) `shouldBe` (Right Optional)
+
+    describe "parse INTEGER type" $ do
+        it "Reads integer range" $ do
+            let text = "INTEGER (1..15)"
+            (parse parseIntegerType "" text) `shouldBe` (Right $ Range 1 15)
+
+        it "Reads just integer" $ do
+            let text = " INTEGER \n ACCESS"
+            (parse parseIntegerType "" text) `shouldBe` (Right $ JustInteger)
+
+        it "Reads enum item" $ do
+            let text = " other(1) "
+            (parse parseSingleEnumItem "" text) `shouldBe` (Right $ ("other", 1))
+
+        it "Reads enum" $ do
+            let text = " INTEGER { \n\
+                        \ other(1),\n\
+                        \ local(2) }"
+            (parse parseIntegerType "" text) `shouldBe` (Right $ Enum [("other",1), ("local", 2)])

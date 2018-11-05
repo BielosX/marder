@@ -2,7 +2,10 @@ module Lib
     ( parseObjectType,
       ObjectType(..),
       Access (..),
-      Status (..)
+      Status (..),
+      parseIntegerType,
+      IntegerType(..),
+      parseSingleEnumItem
     ) where
 
 import Text.Parsec
@@ -11,6 +14,9 @@ import Text.Parsec.Char
 data Access = ReadOnly | ReadWrite | WriteOnly | NotAccessible deriving (Eq, Show)
 
 data Status = Mandatory | Optional | Obsolete deriving (Eq, Show)
+
+data IntegerType = JustInteger | Range Integer Integer | Enum [(String, Integer)]
+    deriving (Eq, Show)
 
 data ObjectType = ObjectType {
     name :: String,
@@ -65,6 +71,43 @@ skipSeparators expr = do
     r <- expr
     skipMany separator
     return r
+
+braces = between (char '(') (char ')')
+
+curlyBraces = between (char '{') (char '}')
+
+parseIntegerRange = do
+    skipSeparators $ string "INTEGER"
+    (f,s) <- braces $ do
+            f <- skipSeparators $ many1 digit
+            string ".."
+            s <- skipSeparators $ many1 digit
+            return (f,s)
+    let fstInt = read f :: Integer
+    let sndInt = read s :: Integer
+    return $ Range fstInt sndInt
+
+parseSingleEnumItem = do
+    id <- skipSeparators $ many1 letter
+    val <- braces $ many1 digit
+    skipMany separator
+    let int = read val :: Integer
+    return (id, int)
+
+commaSep = skipSeparators $ char ','
+
+parseEnum = do
+    skipSeparators $ string "INTEGER"
+    result <- curlyBraces $ sepBy1 parseSingleEnumItem commaSep
+    return $ Enum result
+
+parseJustInteger = do
+    skipSeparators $ string "INTEGER"
+    return JustInteger
+
+parseIntegerType :: Parsec [Char] () IntegerType
+parseIntegerType = do
+    try parseIntegerRange <|> try parseEnum <|> parseJustInteger
 
 parseObjectType :: Parsec [Char] () ObjectType
 parseObjectType = do
