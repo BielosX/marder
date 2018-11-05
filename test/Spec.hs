@@ -10,10 +10,13 @@ main = hspec $ do
         let text = "ifNumber OBJECT-TYPE \n\
                         \ SYNTAX  INTEGER \n\
                         \ ACCESS  read-only \n\
-                        \ STATUS  mandatory \n\
+                        \ STATUS  optional \n\
                         \ ::= { interfaces 1 }"
         it "Reads object name" $ do
             fmap name (parse parseObjectType "" text) `shouldBe` (Right "ifNumber")
 
         it "Reads access field" $ do
             fmap access (parse parseObjectType "" text) `shouldBe` (Right ReadOnly)
+
+        it "Reads status field" $ do
+            fmap status (parse parseObjectType "" text) `shouldBe` (Right Optional)

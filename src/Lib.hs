@@ -1,7 +1,8 @@
 module Lib
     ( parseObjectType,
       ObjectType(..),
-      Access (..)
+      Access (..),
+      Status (..)
     ) where
 
 import Text.Parsec
@@ -9,10 +10,13 @@ import Text.Parsec.Char
 
 data Access = ReadOnly | ReadWrite | WriteOnly | NotAccessible deriving (Eq, Show)
 
+data Status = Mandatory | Optional | Obsolete deriving (Eq, Show)
+
 data ObjectType = ObjectType {
     name :: String,
     syntax :: String,
-    access :: Access
+    access :: Access,
+    status :: Status
 } deriving (Eq, Show)
 
 separator = space <|> newline
@@ -39,18 +43,37 @@ accessField = try writeOnly <|>
               try readWrite <|>
               notAccessible
 
+mandatory = do
+    string "mandatory"
+    return Mandatory
+
+optional = do
+    string "optional"
+    return Optional
+
+obsolete = do
+    string "obsolete"
+    return Obsolete
+
+statusField :: Parsec [Char] () Status
+statusField = try mandatory <|>
+              try Lib.optional <|>
+              obsolete
+
+skipSeparators expr = do
+    skipMany separator
+    r <- expr
+    skipMany separator
+    return r
+
 parseObjectType :: Parsec [Char] () ObjectType
 parseObjectType = do
-    spaces
-    objectName <- many1 letter
-    spaces
+    objectName <- skipSeparators $ many1 letter
     string "OBJECT-TYPE"
-    skipMany separator
-    string "SYNTAX"
-    spaces
+    skipSeparators $ string "SYNTAX"
     syntax <- many1 letter
-    skipMany separator
-    string "ACCESS"
-    spaces
+    skipSeparators $ string "ACCESS"
     ac <- accessField
-    return (ObjectType objectName syntax ac)
+    skipSeparators $ string "STATUS"
+    stat <- statusField
+    return (ObjectType objectName syntax ac stat)
