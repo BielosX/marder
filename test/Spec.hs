@@ -16,6 +16,11 @@ main = hspec $ do
                         \   more text \n\
                         \ \" \n\
                         \ ::= { interfaces 1 }"
+        let withObjId = "sysObjectID OBJECT-TYPE \n\
+                            \ SYNTAX  OBJECT IDENTIFIER \n\
+                            \ ACCESS  read-only \n\
+                            \ STATUS  mandatory \n\
+                            \ ::= { system 2 }"
         it "Reads object name" $ do
             fmap name (parse parseObjectType "" text) `shouldBe` (Right "ifNumber")
 
@@ -24,6 +29,12 @@ main = hspec $ do
 
         it "Reads status field" $ do
             fmap status (parse parseObjectType "" text) `shouldBe` (Right Optional)
+
+        it "Reads integer syntax" $ do
+            fmap syntax (parse parseObjectType "" text) `shouldBe` (Right $ Integer JustInteger)
+
+        it "Reads object id syntax" $ do
+            fmap syntax (parse parseObjectType "" withObjId) `shouldBe` (Right ObjectIdentifier)
 
     describe "skip description" $ do
         let desc = " DESCRIPTION \"Some text \n\

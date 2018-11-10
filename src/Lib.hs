@@ -6,7 +6,8 @@ module Lib
       parseIntegerType,
       IntegerType(..),
       parseSingleEnumItem,
-      skipDescription
+      skipDescription,
+      Type(..)
     ) where
 
 import Text.Parsec
@@ -19,11 +20,11 @@ data Status = Mandatory | Optional | Obsolete deriving (Eq, Show)
 data IntegerType = JustInteger | Range Integer Integer | Enum [(String, Integer)]
     deriving (Eq, Show)
 
-data Type = Integer | ObjectIdentifier deriving (Eq, Show)
+data Type = Integer IntegerType | ObjectIdentifier deriving (Eq, Show)
 
 data ObjectType = ObjectType {
     name :: String,
-    syntax :: String,
+    syntax :: Type,
     access :: Access,
     status :: Status
 } deriving (Eq, Show)
@@ -116,15 +117,22 @@ skipDescription = do
     skipSeparators $ string "DESCRIPTION"
     between (char '"') (char '"') $ skipMany $ noneOf ['"']
 
+parseObjectId = do
+    skipSeparators $ string "OBJECT IDENTIFIER"
+    return ObjectIdentifier
+
+parseSyntax = do
+    (fmap Integer $ try parseIntegerType) <|> parseObjectId
+
 parseObjectType :: Parsec [Char] () ObjectType
 parseObjectType = do
     objectName <- skipSeparators $ many1 letter
     string "OBJECT-TYPE"
     skipSeparators $ string "SYNTAX"
-    syntax <- many1 letter
+    syntax <- parseSyntax
     skipSeparators $ string "ACCESS"
     ac <- accessField
     skipSeparators $ string "STATUS"
     stat <- statusField
-    Text.Parsec.optional skipDescription
+    Text.Parsec.optional $ try skipDescription
     return (ObjectType objectName syntax ac stat)
