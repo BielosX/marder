@@ -5,7 +5,8 @@ module Lib
       Status (..),
       parseIntegerType,
       IntegerType(..),
-      parseSingleEnumItem
+      parseSingleEnumItem,
+      skipDescription
     ) where
 
 import Text.Parsec
@@ -17,6 +18,8 @@ data Status = Mandatory | Optional | Obsolete deriving (Eq, Show)
 
 data IntegerType = JustInteger | Range Integer Integer | Enum [(String, Integer)]
     deriving (Eq, Show)
+
+data Type = Integer | ObjectIdentifier deriving (Eq, Show)
 
 data ObjectType = ObjectType {
     name :: String,
@@ -109,6 +112,10 @@ parseIntegerType :: Parsec [Char] () IntegerType
 parseIntegerType = do
     try parseIntegerRange <|> try parseEnum <|> parseJustInteger
 
+skipDescription = do
+    skipSeparators $ string "DESCRIPTION"
+    between (char '"') (char '"') $ skipMany $ noneOf ['"']
+
 parseObjectType :: Parsec [Char] () ObjectType
 parseObjectType = do
     objectName <- skipSeparators $ many1 letter
@@ -119,4 +126,5 @@ parseObjectType = do
     ac <- accessField
     skipSeparators $ string "STATUS"
     stat <- statusField
+    Text.Parsec.optional skipDescription
     return (ObjectType objectName syntax ac stat)

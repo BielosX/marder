@@ -11,6 +11,10 @@ main = hspec $ do
                         \ SYNTAX  INTEGER \n\
                         \ ACCESS  read-only \n\
                         \ STATUS  optional \n\
+                        \ DESCRIPTION \n\
+                        \ \"Some text \n\
+                        \   more text \n\
+                        \ \" \n\
                         \ ::= { interfaces 1 }"
         it "Reads object name" $ do
             fmap name (parse parseObjectType "" text) `shouldBe` (Right "ifNumber")
@@ -20,6 +24,12 @@ main = hspec $ do
 
         it "Reads status field" $ do
             fmap status (parse parseObjectType "" text) `shouldBe` (Right Optional)
+
+    describe "skip description" $ do
+        let desc = " DESCRIPTION \"Some text \n\
+                                 \ more text\" "
+        it "skip" $ do
+            parse skipDescription "" desc `shouldBe` (Right ())
 
     describe "parse INTEGER type" $ do
         it "Reads integer range" $ do
