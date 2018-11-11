@@ -8,11 +8,14 @@ module Lib
       parseSingleEnumItem,
       skipDescription,
       Type(..),
-      parseEntry
+      parseEntry,
+      parseIds,
+      ObjId(..)
     ) where
 
 import Text.Parsec
 import Text.Parsec.Char
+import Data.List
 
 data Access = ReadOnly | ReadWrite | WriteOnly | NotAccessible deriving (Eq, Show)
 
@@ -31,6 +34,8 @@ data ObjectType = ObjectType {
 } deriving (Eq, Show)
 
 type ObjectName = String
+
+data ObjId = NumberId Integer | CharSeq String deriving (Eq, Show)
 
 separator = space <|> newline
 
@@ -132,6 +137,29 @@ parseEntry = do
     identifier <- skipSeparators $ many1 letter
     putState identifier
     parseObjectType
+
+parseCharSeqId = do
+    id <- many1 letter
+    return $ CharSeq id
+
+parseNumberId = do
+    id <- many1 digit
+    return $ NumberId (read id :: Integer)
+
+parseIdentifiers :: [ObjId] -> Parsec [Char] u [ObjId]
+parseIdentifiers x = do
+    skipMany space
+    result <- optionMaybe (try parseCharSeqId <|> parseNumberId)
+    case result of
+        Nothing -> return x
+        (Just y) -> parseIdentifiers (y:x)
+
+parseIds :: Parsec [Char] u [ObjId]
+parseIds = do
+    result <- skipSeparators $ curlyBraces $ parseIdentifiers []
+    case result of
+        [] -> fail "At least one identifier should be specified"
+        x -> return $ reverse x
 
 parseObjectType :: Parsec [Char] ObjectName ObjectType
 parseObjectType = do

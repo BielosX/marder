@@ -62,3 +62,11 @@ main = hspec $ do
                         \ other(1),\n\
                         \ local(2) }"
             (parse parseIntegerType "" text) `shouldBe` (Right $ Enum [("other",1), ("local", 2)])
+
+    describe "parse IDs" $ do
+        let text = "{ system ip 1 }"
+        it "Parse Ids" $ do
+            (parse parseIds "" text) `shouldBe` (Right [CharSeq "system", CharSeq "ip", NumberId 1])
+
+        it "fails if no ids" $ do
+            (parse parseIds "" "{ }") `shouldSatisfy` isLeft
