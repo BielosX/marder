@@ -6,8 +6,8 @@ import Lib
 
 main :: IO ()
 main = hspec $ do
-    describe "parse OBJECT-TYPE macro" $ do
-        let text = "OBJECT-TYPE \n\
+    describe "parse entry" $ do
+        let text = "ifNumber OBJECT-TYPE \n\
                         \ SYNTAX  INTEGER \n\
                         \ ACCESS  read-only \n\
                         \ STATUS  optional \n\
@@ -16,26 +16,26 @@ main = hspec $ do
                         \   more text \n\
                         \ \" \n\
                         \ ::= { interfaces 1 }"
-        let withObjId = "OBJECT-TYPE \n\
+        let withObjId = "ifNumber OBJECT-TYPE \n\
                             \ SYNTAX  OBJECT IDENTIFIER \n\
                             \ ACCESS  read-only \n\
                             \ STATUS  mandatory \n\
                             \ ::= { system 2 }"
-        it "Reads object name from state" $ do
-            fmap name (runParser parseObjectType "ifNumber" "" text) `shouldBe` (Right "ifNumber")
+        it "Reads object name" $ do
+            fmap name (runParser parseEntry [] "" text) `shouldBe` (Right "ifNumber")
 
         it "Reads access field" $ do
-            fmap access (runParser parseObjectType "ifNumber" "" text) `shouldBe` (Right ReadOnly)
+            fmap access (runParser parseEntry [] "" text) `shouldBe` (Right ReadOnly)
 
         it "Reads status field" $ do
-            fmap status (runParser parseObjectType "ifNumber" "" text) `shouldBe` (Right Optional)
+            fmap status (runParser parseEntry [] "" text) `shouldBe` (Right Optional)
 
         it "Reads integer syntax" $ do
-            let result = fmap syntax (runParser parseObjectType "ifNumber" "" text)
+            let result = fmap syntax (runParser parseEntry [] "" text)
             result `shouldBe` (Right $ Integer JustInteger)
 
         it "Reads object id syntax" $ do
-            let result = fmap syntax (runParser parseObjectType "sysObjectID" "" withObjId)
+            let result = fmap syntax (runParser parseEntry [] "" withObjId)
             result `shouldBe` (Right ObjectIdentifier)
 
     describe "skip description" $ do

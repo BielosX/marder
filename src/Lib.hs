@@ -7,7 +7,8 @@ module Lib
       IntegerType(..),
       parseSingleEnumItem,
       skipDescription,
-      Type(..)
+      Type(..),
+      parseEntry
     ) where
 
 import Text.Parsec
@@ -125,6 +126,12 @@ parseObjectId = do
 
 parseSyntax = do
     (fmap Integer $ try parseIntegerType) <|> parseObjectId
+
+parseEntry :: Parsec [Char] ObjectName ObjectType
+parseEntry = do
+    identifier <- skipSeparators $ many1 letter
+    putState identifier
+    parseObjectType
 
 parseObjectType :: Parsec [Char] ObjectName ObjectType
 parseObjectType = do
