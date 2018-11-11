@@ -10,7 +10,8 @@ module Lib
       Type(..),
       parseEntry,
       parseIds,
-      ObjId(..)
+      ObjId(..),
+      Entry(..)
     ) where
 
 import Text.Parsec
@@ -36,6 +37,8 @@ data ObjectType = ObjectType {
 type ObjectName = String
 
 data ObjId = NumberId Integer | CharSeq String deriving (Eq, Show)
+
+data Entry = IdDecl [ObjId] | ObjType ObjectType deriving (Eq, Show)
 
 separator = space <|> newline
 
@@ -132,15 +135,16 @@ parseObjectId = do
 parseSyntax = do
     (fmap Integer $ try parseIntegerType) <|> parseObjectId
 
-parseEntry :: Parsec [Char] ObjectName ObjectType
+parseEntry :: Parsec [Char] ObjectName Entry
 parseEntry = do
     identifier <- skipSeparators $ many1 letter
     putState identifier
-    parseObjectType
+    (fmap ObjType $ try parseObjectType) <|> (fmap IdDecl $ parseObjIdAssign)
 
 parseCharSeqId = do
-    id <- many1 letter
-    return $ CharSeq id
+    letterPrefix <- many1 letter
+    rest <- many (letter <|> digit <|> char '-')
+    return $ CharSeq $ letterPrefix ++ rest
 
 parseNumberId = do
     id <- many1 digit
@@ -160,6 +164,13 @@ parseIds = do
     case result of
         [] -> fail "At least one identifier should be specified"
         x -> return $ reverse x
+
+parseObjIdAssign = do
+    string "OBJECT IDENTIFIER"
+    spaces
+    string "::="
+    spaces
+    parseIds
 
 parseObjectType :: Parsec [Char] ObjectName ObjectType
 parseObjectType = do

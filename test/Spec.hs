@@ -4,6 +4,17 @@ import Data.Either
 
 import Lib
 
+parsed :: Either ParseError a -> (a -> Expectation) -> Expectation
+parsed (Right x) f = f x
+parsed (Left x) _ = expectationFailure $ "parser failed with error: " ++ (show x)
+
+isObjType :: (ObjectType -> Expectation) -> Entry -> Expectation
+isObjType f (ObjType t) = f t
+isObjType _ _ = expectationFailure "Entry is not a ObjType"
+
+isIdDecl f (IdDecl i) = f i
+isIdDecl _ _ = expectationFailure "Entry is not a IdDecl"
+
 main :: IO ()
 main = hspec $ do
     describe "parse entry" $ do
@@ -21,22 +32,31 @@ main = hspec $ do
                             \ ACCESS  read-only \n\
                             \ STATUS  mandatory \n\
                             \ ::= { system 2 }"
+        let identifierDecl = "system       OBJECT IDENTIFIER ::= { mib-2 1 }"
+
         it "Reads object name" $ do
-            fmap name (runParser parseEntry [] "" text) `shouldBe` (Right "ifNumber")
+            let result = runParser parseEntry [] "" text
+            parsed result $ isObjType $ \t -> name t `shouldBe` "ifNumber"
 
         it "Reads access field" $ do
-            fmap access (runParser parseEntry [] "" text) `shouldBe` (Right ReadOnly)
+            let result = runParser parseEntry [] "" text
+            parsed result $ isObjType $ \t -> access t `shouldBe` ReadOnly
 
         it "Reads status field" $ do
-            fmap status (runParser parseEntry [] "" text) `shouldBe` (Right Optional)
+            let result = runParser parseEntry [] "" text
+            parsed result $ isObjType $ \t -> status t `shouldBe` Optional
 
         it "Reads integer syntax" $ do
-            let result = fmap syntax (runParser parseEntry [] "" text)
-            result `shouldBe` (Right $ Integer JustInteger)
+            let result = runParser parseEntry [] "" text
+            parsed result $ isObjType $ \t -> syntax t `shouldBe` (Integer JustInteger)
 
         it "Reads object id syntax" $ do
-            let result = fmap syntax (runParser parseEntry [] "" withObjId)
-            result `shouldBe` (Right ObjectIdentifier)
+            let result = runParser parseEntry [] "" withObjId
+            parsed result $ isObjType $ \t -> syntax t `shouldBe` ObjectIdentifier
+
+        it "Reads id decl" $ do
+            let result = runParser parseEntry [] "" identifierDecl
+            parsed result $ isIdDecl $ \l -> l `shouldContain` [CharSeq "mib-2", NumberId 1]
 
     describe "skip description" $ do
         let desc = " DESCRIPTION \"Some text \n\
