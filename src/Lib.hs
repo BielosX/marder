@@ -29,6 +29,8 @@ data ObjectType = ObjectType {
     status :: Status
 } deriving (Eq, Show)
 
+type ObjectName = String
+
 separator = space <|> newline
 
 readOnly = do
@@ -47,7 +49,7 @@ notAccessible = do
     string "not-accessible"
     return NotAccessible
 
-accessField :: Parsec [Char] () Access
+accessField :: Parsec [Char] u Access
 accessField = try writeOnly <|>
               try readOnly <|>
               try readWrite <|>
@@ -65,7 +67,7 @@ obsolete = do
     string "obsolete"
     return Obsolete
 
-statusField :: Parsec [Char] () Status
+statusField :: Parsec [Char] u Status
 statusField = try mandatory <|>
               try Lib.optional <|>
               obsolete
@@ -109,7 +111,7 @@ parseJustInteger = do
     skipSeparators $ string "INTEGER"
     return JustInteger
 
-parseIntegerType :: Parsec [Char] () IntegerType
+parseIntegerType :: Parsec [Char] u IntegerType
 parseIntegerType = do
     try parseIntegerRange <|> try parseEnum <|> parseJustInteger
 
@@ -124,9 +126,8 @@ parseObjectId = do
 parseSyntax = do
     (fmap Integer $ try parseIntegerType) <|> parseObjectId
 
-parseObjectType :: Parsec [Char] () ObjectType
+parseObjectType :: Parsec [Char] ObjectName ObjectType
 parseObjectType = do
-    objectName <- skipSeparators $ many1 letter
     string "OBJECT-TYPE"
     skipSeparators $ string "SYNTAX"
     syntax <- parseSyntax
@@ -135,4 +136,6 @@ parseObjectType = do
     skipSeparators $ string "STATUS"
     stat <- statusField
     Text.Parsec.optional $ try skipDescription
+    objectName <- getState
+    putState []
     return (ObjectType objectName syntax ac stat)
