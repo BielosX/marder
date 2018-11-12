@@ -58,7 +58,7 @@ main = hspec $ do
 
         it "Reads object abs id" $ do
             let result = runParser parseEntry [] "" text
-            parsed result $ isObjType $ absId `fieldShouldBe` [CharSeq "interfaces", NumberId 1]
+            parsed result $ isObjType $ entryId `fieldShouldBe` [CharSeq "interfaces", NumberId 1]
 
         it "Reads id decl" $ do
             let result = runParser parseEntry [] "" identifierDecl

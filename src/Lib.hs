@@ -19,7 +19,7 @@ import Text.Parsec.Char
 import Data.List
 import qualified Data.Map.Strict as Map
 
-type AbsId = [ObjId]
+type EntryId = [ObjId]
 
 data Access = ReadOnly | ReadWrite | WriteOnly | NotAccessible deriving (Eq, Show)
 
@@ -35,14 +35,14 @@ data ObjectType = ObjectType {
     syntax :: Type,
     access :: Access,
     status :: Status,
-    absId :: AbsId
+    entryId :: EntryId
 } deriving (Eq, Show)
 
 type ObjectName = String
 
 data ObjId = NumberId Integer | CharSeq String deriving (Eq, Show)
 
-data Entry = IdDecl String AbsId | ObjType ObjectType deriving (Eq, Show)
+data Entry = IdDecl String EntryId | ObjType ObjectType deriving (Eq, Show)
 
 data TreeEntry = TreeEntry Entry (Map.Map Integer TreeEntry) deriving (Eq, Show)
 
