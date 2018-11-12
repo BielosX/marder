@@ -17,6 +17,9 @@ module Lib
 import Text.Parsec
 import Text.Parsec.Char
 import Data.List
+import qualified Data.Map.Strict as Map
+
+type AbsId = [ObjId]
 
 data Access = ReadOnly | ReadWrite | WriteOnly | NotAccessible deriving (Eq, Show)
 
@@ -31,14 +34,17 @@ data ObjectType = ObjectType {
     name :: String,
     syntax :: Type,
     access :: Access,
-    status :: Status
+    status :: Status,
+    absId :: AbsId
 } deriving (Eq, Show)
 
 type ObjectName = String
 
 data ObjId = NumberId Integer | CharSeq String deriving (Eq, Show)
 
-data Entry = IdDecl [ObjId] | ObjType ObjectType deriving (Eq, Show)
+data Entry = IdDecl AbsId | ObjType ObjectType deriving (Eq, Show)
+
+data TreeEntry = TreeEntry Entry (Map.Map Integer TreeEntry)
 
 separator = space <|> newline
 
@@ -182,6 +188,8 @@ parseObjectType = do
     skipSeparators $ string "STATUS"
     stat <- statusField
     Text.Parsec.optional $ try skipDescription
+    skipSeparators $ string "::="
+    ids <- skipSeparators $ parseIds
     objectName <- getState
     putState []
-    return (ObjectType objectName syntax ac stat)
+    return (ObjectType objectName syntax ac stat ids)

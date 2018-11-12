@@ -56,6 +56,10 @@ main = hspec $ do
             let result = runParser parseEntry [] "" withObjId
             parsed result $ isObjType $ syntax `fieldShouldBe` ObjectIdentifier
 
+        it "Reads object abs id" $ do
+            let result = runParser parseEntry [] "" text
+            parsed result $ isObjType $ absId `fieldShouldBe` [CharSeq "interfaces", NumberId 1]
+
         it "Reads id decl" $ do
             let result = runParser parseEntry [] "" identifierDecl
             parsed result $ isIdDecl $ \l -> l `shouldContain` [CharSeq "mib-2", NumberId 1]
