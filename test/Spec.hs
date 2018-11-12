@@ -15,6 +15,8 @@ isObjType _ _ = expectationFailure "Entry is not a ObjType"
 isIdDecl f (IdDecl i) = f i
 isIdDecl _ _ = expectationFailure "Entry is not a IdDecl"
 
+fieldShouldBe a r = \t -> a t `shouldBe` r
+
 main :: IO ()
 main = hspec $ do
     describe "parse entry" $ do
@@ -36,23 +38,23 @@ main = hspec $ do
 
         it "Reads object name" $ do
             let result = runParser parseEntry [] "" text
-            parsed result $ isObjType $ \t -> name t `shouldBe` "ifNumber"
+            parsed result $ isObjType $ name `fieldShouldBe` "ifNumber"
 
         it "Reads access field" $ do
             let result = runParser parseEntry [] "" text
-            parsed result $ isObjType $ \t -> access t `shouldBe` ReadOnly
+            parsed result $ isObjType $ access `fieldShouldBe` ReadOnly
 
         it "Reads status field" $ do
             let result = runParser parseEntry [] "" text
-            parsed result $ isObjType $ \t -> status t `shouldBe` Optional
+            parsed result $ isObjType $ status `fieldShouldBe` Optional
 
         it "Reads integer syntax" $ do
             let result = runParser parseEntry [] "" text
-            parsed result $ isObjType $ \t -> syntax t `shouldBe` (Integer JustInteger)
+            parsed result $ isObjType $ syntax `fieldShouldBe` (Integer JustInteger)
 
         it "Reads object id syntax" $ do
             let result = runParser parseEntry [] "" withObjId
-            parsed result $ isObjType $ \t -> syntax t `shouldBe` ObjectIdentifier
+            parsed result $ isObjType $ syntax `fieldShouldBe` ObjectIdentifier
 
         it "Reads id decl" $ do
             let result = runParser parseEntry [] "" identifierDecl
