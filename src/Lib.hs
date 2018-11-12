@@ -42,9 +42,9 @@ type ObjectName = String
 
 data ObjId = NumberId Integer | CharSeq String deriving (Eq, Show)
 
-data Entry = IdDecl AbsId | ObjType ObjectType deriving (Eq, Show)
+data Entry = IdDecl String AbsId | ObjType ObjectType deriving (Eq, Show)
 
-data TreeEntry = TreeEntry Entry (Map.Map Integer TreeEntry)
+data TreeEntry = TreeEntry Entry (Map.Map Integer TreeEntry) deriving (Eq, Show)
 
 separator = space <|> newline
 
@@ -145,7 +145,7 @@ parseEntry :: Parsec [Char] ObjectName Entry
 parseEntry = do
     identifier <- skipSeparators $ many1 letter
     putState identifier
-    (fmap ObjType $ try parseObjectType) <|> (fmap IdDecl $ parseObjIdAssign)
+    (fmap ObjType $ try parseObjectType) <|> parseObjIdAssign
 
 parseCharSeqId = do
     letterPrefix <- many1 letter
@@ -176,7 +176,10 @@ parseObjIdAssign = do
     spaces
     string "::="
     spaces
-    parseIds
+    ids <- parseIds
+    name <- getState
+    putState []
+    return $ IdDecl name ids
 
 parseObjectType :: Parsec [Char] ObjectName ObjectType
 parseObjectType = do
@@ -193,3 +196,4 @@ parseObjectType = do
     objectName <- getState
     putState []
     return (ObjectType objectName syntax ac stat ids)
+

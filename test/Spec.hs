@@ -12,7 +12,7 @@ isObjType :: (ObjectType -> Expectation) -> Entry -> Expectation
 isObjType f (ObjType t) = f t
 isObjType _ _ = expectationFailure "Entry is not a ObjType"
 
-isIdDecl f (IdDecl i) = f i
+isIdDecl f (IdDecl name i) = f name i
 isIdDecl _ _ = expectationFailure "Entry is not a IdDecl"
 
 fieldShouldBe a r = \t -> a t `shouldBe` r
@@ -62,7 +62,11 @@ main = hspec $ do
 
         it "Reads id decl" $ do
             let result = runParser parseEntry [] "" identifierDecl
-            parsed result $ isIdDecl $ \l -> l `shouldContain` [CharSeq "mib-2", NumberId 1]
+            parsed result $ isIdDecl $ \_ l -> l `shouldContain` [CharSeq "mib-2", NumberId 1]
+
+        it "Reads id decl name" $ do
+            let result = runParser parseEntry [] "" identifierDecl
+            parsed result $ isIdDecl $ \n _ -> n `shouldBe` "system"
 
     describe "skip description" $ do
         let desc = " DESCRIPTION \"Some text \n\
