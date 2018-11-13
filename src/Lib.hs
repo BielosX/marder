@@ -11,13 +11,16 @@ module Lib
       parseEntry,
       parseIds,
       ObjId(..),
-      Entry(..)
+      Entry(..),
+      getFullId,
+      mib2Root
     ) where
 
 import Text.Parsec
 import Text.Parsec.Char
 import Data.List
 import qualified Data.Map.Strict as Map
+import Data.Maybe
 
 type EntryId = [ObjId]
 
@@ -44,7 +47,44 @@ data ObjId = NumberId Integer | CharSeq String deriving (Eq, Show)
 
 data Entry = IdDecl String EntryId | ObjType ObjectType deriving (Eq, Show)
 
-data TreeEntry = TreeEntry Entry (Map.Map Integer TreeEntry) deriving (Eq, Show)
+data IndexTreeEntry = IndexTreeEntry {
+    index :: Integer,
+    entryName :: String,
+    children :: Map.Map Integer Entry
+} deriving (Eq, Show)
+
+type NameLookupMap = Map.Map String Entry
+
+data EntryTree = EntryTree {
+    indexTree :: IndexTreeEntry,
+    nameLookup :: NameLookupMap
+} deriving (Eq, Show)
+
+type AbsId = [Integer]
+
+mib2Root :: NameLookupMap
+mib2Root = Map.fromList [
+    ("mgmt", IdDecl "mgmt" (fmap NumberId [1,3,6,1,2]))
+    ]
+
+getEntryId :: Entry -> [ObjId]
+getEntryId (IdDecl name eid) = eid
+getEntryId (ObjType o) = entryId o
+
+_getFullId :: EntryId -> [Integer] -> NameLookupMap -> AbsId
+_getFullId entry a l = case entry of
+    [] -> a
+    ((NumberId i):xs) -> _getFullId xs (i:a) l
+    ((CharSeq sq):xs) -> _getFullId (fromMaybe [] $ sqEntry sq) a l
+    where sqEntry sq = fmap (reverse . getEntryId) $ Map.lookup sq l
+
+getFullId e l = _getFullId (reverse e) [] l
+
+insertEntry :: Entry -> EntryTree -> EntryTree
+insertEntry entry@(IdDecl name id) tree = EntryTree (indexTree tree) (Map.insert name entry lookup)
+    where lookup = nameLookup tree
+insertEntry entry@(ObjType objType) tree = let n = name objType in
+    EntryTree (indexTree tree) (Map.insert n entry (nameLookup tree))
 
 separator = space <|> newline
 

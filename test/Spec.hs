@@ -1,6 +1,7 @@
 import Test.Hspec
 import Text.Parsec
 import Data.Either
+import qualified Data.Map.Strict as Map
 
 import Lib
 
@@ -100,3 +101,12 @@ main = hspec $ do
 
         it "fails if no ids" $ do
             (parse parseIds "" "{ }") `shouldSatisfy` isLeft
+
+
+    describe "returns full id" $ do
+        it "mgmt's child id" $
+            getFullId [CharSeq "mgmt", NumberId 1] mib2Root `shouldBe` [1,3,6,1,2,1]
+
+        it "gets full id" $ do
+            let mp = Map.insert "mib-2" (IdDecl "mib-2" [CharSeq "mgmt", NumberId 1]) mib2Root
+            getFullId [CharSeq "mib-2", NumberId 1] mp `shouldBe` [1,3,6,1,2,1,1]
