@@ -13,7 +13,9 @@ module Lib
       ObjId(..),
       Entry(..),
       getFullId,
-      mib2Root
+      mib2Root,
+      parseMib,
+      EntryTree(..)
     ) where
 
 import Text.Parsec
@@ -85,6 +87,18 @@ insertEntry entry@(IdDecl name id) tree = EntryTree (indexTree tree) (Map.insert
     where lookup = nameLookup tree
 insertEntry entry@(ObjType objType) tree = let n = name objType in
     EntryTree (indexTree tree) (Map.insert n entry (nameLookup tree))
+
+_parseMib :: EntryTree -> Parsec [Char] ObjectName EntryTree
+_parseMib tree = do
+    entry <- skipSeparators $ parseEntry
+    end <- optionMaybe $ try eof
+    let newTree = insertEntry entry tree
+    case end of
+        Nothing -> _parseMib newTree
+        (Just _) -> return newTree
+
+parseMib = _parseMib $ EntryTree root mib2Root
+    where root = IndexTreeEntry 1 "iso" Map.empty
 
 separator = space <|> newline
 
@@ -183,7 +197,10 @@ parseSyntax = do
 
 parseEntry :: Parsec [Char] ObjectName Entry
 parseEntry = do
-    identifier <- skipSeparators $ many1 letter
+    identifier <- skipSeparators $ do
+        letterPrefix <- many1 letter
+        rest <- many (letter <|> digit <|> char '-')
+        return $ letterPrefix ++ rest
     putState identifier
     (fmap ObjType $ try parseObjectType) <|> parseObjIdAssign
 

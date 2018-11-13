@@ -110,3 +110,14 @@ main = hspec $ do
         it "gets full id" $ do
             let mp = Map.insert "mib-2" (IdDecl "mib-2" [CharSeq "mgmt", NumberId 1]) mib2Root
             getFullId [CharSeq "mib-2", NumberId 1] mp `shouldBe` [1,3,6,1,2,1,1]
+
+    describe "parse many entries" $ do
+        it "contains identifiers" $ do
+            let text = "mib-2       OBJECT IDENTIFIER ::= { mgmt 1 } \n\
+                        \ test      OBJECT IDENTIFIER ::= { mib-2 1 }"
+
+            let result = runParser parseMib [] "" text
+            let exp = ["mgmt", "mib-2", "test"]
+            parsed result $ \r -> (fmap fst $ Map.toList $ nameLookup r) `shouldContain` exp
+
+
