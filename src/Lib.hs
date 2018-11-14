@@ -15,7 +15,9 @@ module Lib
       getFullId,
       mib2Root,
       parseMib,
-      EntryTree(..)
+      EntryTree(..),
+      comment,
+      skipSeparators
     ) where
 
 import Text.Parsec
@@ -100,6 +102,9 @@ _parseMib tree = do
 parseMib = _parseMib $ EntryTree root mib2Root
     where root = IndexTreeEntry 1 "iso" Map.empty
 
+comment :: Parsec [Char] u ()
+comment = between (string "--") newline $ skipMany1 $ noneOf "\n"
+
 separator = space <|> newline
 
 readOnly = do
@@ -141,10 +146,18 @@ statusField = try mandatory <|>
               try Lib.optional <|>
               obsolete
 
+nwln = do
+    newline
+    return ()
+
+spc = do
+    space
+    return ()
+
 skipSeparators expr = do
     skipMany separator
     r <- expr
-    skipMany separator
+    skipMany (comment <|> nwln <|> spc)
     return r
 
 braces = between (char '(') (char ')')

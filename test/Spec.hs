@@ -113,11 +113,38 @@ main = hspec $ do
 
     describe "parse many entries" $ do
         it "contains identifiers" $ do
-            let text = "mib-2       OBJECT IDENTIFIER ::= { mgmt 1 } \n\
-                        \ test      OBJECT IDENTIFIER ::= { mib-2 1 }"
+            let text = "mib-2       OBJECT IDENTIFIER ::= { mgmt 1 } --real programmers don't use comments \n\
+                        \ test      OBJECT IDENTIFIER ::= { mib-2 1 } --the  code is obvious\n"
 
             let result = runParser parseMib [] "" text
             let exp = ["mgmt", "mib-2", "test"]
             parsed result $ \r -> (fmap fst $ Map.toList $ nameLookup r) `shouldContain` exp
 
 
+    describe "comment" $ do
+        let test = "--comment\ntest"
+        let test2 = "test\
+                    \ \n\
+                    \ \n\
+                    \ \n\
+                    \ --  comment \n\
+                    \ \n\
+                    \ \n\
+                    \ testy"
+        it "skip comment" $ do
+            let expr = do
+                    comment
+                    a <- many1 letter
+                    eof
+                    return a
+            parse expr  "" test `shouldBe` (Right "test")
+
+
+        it "skip multi lines"$ do
+            let  expr = do
+                    a <- skipSeparators $ many1 letter
+                    b <- skipSeparators $ many1 letter
+                    eof
+                    return (a,b)
+
+            parse expr "" test2 `shouldBe` (Right ("test", "testy"))
