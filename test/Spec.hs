@@ -114,6 +114,10 @@ main = hspec $ do
     describe "parse many entries" $ do
         it "contains identifiers" $ do
             let text = "mib-2       OBJECT IDENTIFIER ::= { mgmt 1 } --real programmers don't use comments \n\
+                        \ \n \
+                        \ \n \
+                        \ -- test comment \n\
+                        \ \n \
                         \ test      OBJECT IDENTIFIER ::= { mib-2 1 } --the  code is obvious\n"
 
             let result = runParser parseMib [] "" text
