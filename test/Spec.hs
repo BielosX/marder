@@ -113,12 +113,14 @@ main = hspec $ do
 
     describe "parse many entries" $ do
         it "contains identifiers" $ do
-            let text = "mib-2       OBJECT IDENTIFIER ::= { mgmt 1 } --real programmers don't use comments \n\
+            let text = " RFC1213-MIB DEFINITIONS ::= BEGIN \n\
+                        \ mib-2       OBJECT IDENTIFIER ::= { mgmt 1 } --real programmers don't use comments \n\
                         \ \n \
                         \ \n \
                         \ -- test comment \n\
                         \ \n \
-                        \ test      OBJECT IDENTIFIER ::= { mib-2 1 } --the  code is obvious\n"
+                        \ test      OBJECT IDENTIFIER ::= { mib-2 1 } --the  code is obvious\n\
+                        \ END"
 
             let result = runParser parseMib [] "" text
             let exp = ["mgmt", "mib-2", "test"]

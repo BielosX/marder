@@ -92,14 +92,20 @@ insertEntry entry@(ObjType objType) tree = let n = name objType in
 
 _parseMib :: EntryTree -> Parsec [Char] ObjectName EntryTree
 _parseMib tree = do
-    entry <- skipSeparators $ parseEntry
-    end <- optionMaybe $ try eof
-    let newTree = insertEntry entry tree
-    case end of
-        Nothing -> _parseMib newTree
-        (Just _) -> return newTree
+    entry <- optionMaybe $ skipSeparators $ try parseEntry
+    case entry of
+        Nothing -> return tree
+        (Just e) -> _parseMib (insertEntry e tree)
 
-parseMib = _parseMib $ EntryTree root mib2Root
+parseMib = do
+    spaces
+    moduleName <- many1 (letter <|> digit <|> char '-')
+    spaces
+    string "DEFINITIONS"
+    spaces
+    string "::="
+    spaces
+    between (string "BEGIN") (string "END") $ _parseMib $ EntryTree root mib2Root
     where root = IndexTreeEntry 1 "iso" Map.empty
 
 comment :: Parsec [Char] u ()
