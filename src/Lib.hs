@@ -17,7 +17,10 @@ module Lib
       parseMib,
       EntryTree(..),
       comment,
-      skipSeparators
+      skipSeparators,
+      insertNameToIndexTree,
+      getNameFromIndexTree,
+      indexTreeRoot
     ) where
 
 import Text.Parsec
@@ -52,9 +55,8 @@ data ObjId = NumberId Integer | CharSeq String deriving (Eq, Show)
 data Entry = IdDecl String EntryId | ObjType ObjectType deriving (Eq, Show)
 
 data IndexTreeEntry = IndexTreeEntry {
-    index :: Integer,
     entryName :: String,
-    children :: Map.Map Integer Entry
+    children :: Map.Map Integer IndexTreeEntry
 } deriving (Eq, Show)
 
 type NameLookupMap = Map.Map String Entry
@@ -71,6 +73,8 @@ mib2Root = Map.fromList [
     ("mgmt", IdDecl "mgmt" (fmap NumberId [1,3,6,1,2]))
     ]
 
+indexTreeRoot = IndexTreeEntry "root" Map.empty
+
 getEntryId :: Entry -> [ObjId]
 getEntryId (IdDecl name eid) = eid
 getEntryId (ObjType o) = entryId o
@@ -83,6 +87,18 @@ _getFullId entry a l = case entry of
     where sqEntry sq = fmap (reverse . getEntryId) $ Map.lookup sq l
 
 getFullId e l = _getFullId (reverse e) [] l
+
+insertNameToIndexTree :: String -> AbsId -> IndexTreeEntry -> IndexTreeEntry
+insertNameToIndexTree name [] tree = tree
+insertNameToIndexTree name (x:[]) (IndexTreeEntry entryName children) = IndexTreeEntry entryName (Map.insert x newEntry children)
+    where newEntry = IndexTreeEntry name Map.empty
+insertNameToIndexTree name (x:xs) (IndexTreeEntry entryName children) = IndexTreeEntry entryName (Map.alter f x children)
+    where f (Just a) = Just $ insertNameToIndexTree name xs a
+          f Nothing = Nothing
+
+getNameFromIndexTree :: AbsId -> IndexTreeEntry -> Maybe String
+getNameFromIndexTree [] (IndexTreeEntry name _) = Just name
+getNameFromIndexTree (x:xs) (IndexTreeEntry _ children) = (Map.lookup x children) >>= getNameFromIndexTree xs
 
 insertEntry :: Entry -> EntryTree -> EntryTree
 insertEntry entry@(IdDecl name id) tree = EntryTree (indexTree tree) (Map.insert name entry lookup)
@@ -105,8 +121,7 @@ parseMib = do
     spaces
     string "::="
     spaces
-    between (string "BEGIN") (string "END") $ _parseMib $ EntryTree root mib2Root
-    where root = IndexTreeEntry 1 "iso" Map.empty
+    between (string "BEGIN") (string "END") $ _parseMib $ EntryTree indexTreeRoot mib2Root
 
 comment :: Parsec [Char] u ()
 comment = between (string "--") newline $ skipMany1 $ noneOf "\n"

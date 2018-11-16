@@ -154,3 +154,9 @@ main = hspec $ do
                     return (a,b)
 
             parse expr "" test2 `shouldBe` (Right ("test", "testy"))
+
+    describe "index tree" $ do
+        it "inserts" $ do
+            let t = insertNameToIndexTree "test1" [1] indexTreeRoot
+            let r = insertNameToIndexTree "test2" [1,1] t
+            getNameFromIndexTree [1,1] r `shouldBe` (Just "test2")
