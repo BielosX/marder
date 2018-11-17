@@ -35,6 +35,18 @@ main = hspec $ do
                             \ ACCESS  read-only \n\
                             \ STATUS  mandatory \n\
                             \ ::= { system 2 }"
+
+        let withSeqOf = "ifNumber OBJECT-TYPE \n\
+                            \ SYNTAX  SEQUENCE OF IfEntry \n\
+                            \ ACCESS  read-only \n\
+                            \ STATUS  mandatory \n\
+                            \ ::= { system 2 }"
+
+        let withEntryRef = "ifNumber OBJECT-TYPE \n\
+                            \ SYNTAX  IfEntry \n\
+                            \ ACCESS  read-only \n\
+                            \ STATUS  mandatory \n\
+                            \ ::= { system 2 }"
         let identifierDecl = "system       OBJECT IDENTIFIER ::= { mib-2 1 }"
 
         it "Reads object name" $ do
@@ -68,6 +80,14 @@ main = hspec $ do
         it "Reads id decl name" $ do
             let result = runParser parseEntry [] "" identifierDecl
             parsed result $ isIdDecl $ \n _ -> n `shouldBe` "system"
+
+        it "Reads sequence of syntax" $ do
+            let result = runParser parseEntry [] "" withSeqOf
+            parsed result $ isObjType $ syntax `fieldShouldBe` (SequenceOf "IfEntry")
+
+        it "Reads entry reference" $ do
+            let result = runParser parseEntry [] "" withEntryRef
+            parsed result $ isObjType $ syntax `fieldShouldBe` (EntryReference "IfEntry")
 
     describe "skip description" $ do
         let desc = " DESCRIPTION \"Some text \n\

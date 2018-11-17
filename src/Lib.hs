@@ -39,7 +39,10 @@ data Status = Mandatory | Optional | Obsolete deriving (Eq, Show)
 data IntegerType = JustInteger | Range Integer Integer | Enum [(String, Integer)]
     deriving (Eq, Show)
 
-data Type = Integer IntegerType | ObjectIdentifier deriving (Eq, Show)
+data Type = Integer IntegerType |
+            ObjectIdentifier |
+            EntryReference EntryRef |
+            SequenceOf EntryRef deriving (Eq, Show)
 
 type EntryRef = String
 
@@ -236,8 +239,20 @@ parseObjectId = do
     skipSeparators $ string "OBJECT IDENTIFIER"
     return ObjectIdentifier
 
+parseSequenceOf = do
+    skipSeparators $ string "SEQUENCE OF"
+    entry <- entryIdentifier
+    return $ SequenceOf entry
+
+parseEntryRef = do
+    ref <- skipSeparators $ entryIdentifier
+    return $ EntryReference ref
+
 parseType = do
-    (fmap Integer $ try parseIntegerType) <|> parseObjectId
+    (fmap Integer $ try parseIntegerType) <|>
+        try parseObjectId <|>
+        try parseSequenceOf <|>
+        parseEntryRef
 
 parseEntry :: Parsec [Char] ObjectName Entry
 parseEntry = do
