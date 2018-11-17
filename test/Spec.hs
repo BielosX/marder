@@ -160,3 +160,15 @@ main = hspec $ do
             let t = insertNameToIndexTree "test1" [1] indexTreeRoot
             let r = insertNameToIndexTree "test2" [1,1] t
             getNameFromIndexTree [1,1] r `shouldBe` (Just "test2")
+
+    describe "parse sequence" $ do
+        it "parse sequence" $ do
+            let seq = "SEQUENCE { \n\
+                        \ el INTEGER, \n\
+                        \ elTwo INTEGER \n\
+                        \ }"
+
+            let r = runParser parseSequence "sequence" "" seq
+            let l = Map.fromList [("el", Integer JustInteger), ("elTwo", Integer JustInteger)]
+            parsed r $ \s -> s `shouldBe` (Sequence "sequence" l)
+

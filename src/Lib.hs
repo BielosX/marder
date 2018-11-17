@@ -20,7 +20,8 @@ module Lib
       skipSeparators,
       insertNameToIndexTree,
       getNameFromIndexTree,
-      indexTreeRoot
+      indexTreeRoot,
+      parseSequence
     ) where
 
 import Text.Parsec
@@ -52,7 +53,9 @@ type ObjectName = String
 
 data ObjId = NumberId Integer | CharSeq String deriving (Eq, Show)
 
-data Entry = IdDecl String EntryId | ObjType ObjectType deriving (Eq, Show)
+data Entry = IdDecl String EntryId |
+             ObjType ObjectType |
+             Sequence String (Map.Map String Type) deriving (Eq, Show)
 
 data IndexTreeEntry = IndexTreeEntry {
     entryName :: String,
@@ -226,7 +229,7 @@ parseObjectId = do
     skipSeparators $ string "OBJECT IDENTIFIER"
     return ObjectIdentifier
 
-parseSyntax = do
+parseType = do
     (fmap Integer $ try parseIntegerType) <|> parseObjectId
 
 parseEntry :: Parsec [Char] ObjectName Entry
@@ -276,7 +279,7 @@ parseObjectType :: Parsec [Char] ObjectName ObjectType
 parseObjectType = do
     string "OBJECT-TYPE"
     skipSeparators $ string "SYNTAX"
-    syntax <- parseSyntax
+    syntax <- parseType
     skipSeparators $ string "ACCESS"
     ac <- accessField
     skipSeparators $ string "STATUS"
@@ -287,4 +290,16 @@ parseObjectType = do
     objectName <- getState
     putState []
     return (ObjectType objectName syntax ac stat ids)
+
+parseSequence = do
+    string "SEQUENCE"
+    s <- skipSeparators $ curlyBraces $ sepBy1 (skipSeparators f) commaSep
+    objectName <- getState
+    putState []
+    return $ Sequence objectName $ Map.fromList s
+    where f = do
+            name <- many1 letter
+            spaces
+            t <- parseType
+            return (name, t)
 
