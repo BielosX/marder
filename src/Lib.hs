@@ -41,12 +41,17 @@ data IntegerType = JustInteger | Range Integer Integer | Enum [(String, Integer)
 
 data Type = Integer IntegerType | ObjectIdentifier deriving (Eq, Show)
 
+type EntryRef = String
+
+newtype SeqIndex = SeqIndex [EntryRef] deriving (Eq, Show)
+
 data ObjectType = ObjectType {
     name :: String,
     syntax :: Type,
     access :: Access,
     status :: Status,
-    entryId :: EntryId
+    entryId :: EntryId,
+    index :: Maybe SeqIndex
 } deriving (Eq, Show)
 
 type ObjectName = String
@@ -125,6 +130,8 @@ parseMib = do
     string "::="
     spaces
     between (string "BEGIN") (string "END") $ _parseMib $ EntryTree indexTreeRoot mib2Root
+
+entryIdentifier = many1 (letter <|> digit <|> char '-')
 
 comment :: Parsec [Char] u ()
 comment = between (string "--") newline $ skipMany1 $ noneOf "\n"
@@ -275,6 +282,12 @@ parseObjIdAssign = do
     putState []
     return $ IdDecl name ids
 
+parseIndex = do
+    string "INDEX"
+    spaces
+    ids <- skipSeparators $ curlyBraces $ sepBy1 entryIdentifier commaSep
+    return $ SeqIndex ids
+
 parseObjectType :: Parsec [Char] ObjectName ObjectType
 parseObjectType = do
     string "OBJECT-TYPE"
@@ -287,9 +300,10 @@ parseObjectType = do
     Text.Parsec.optional $ try skipDescription
     skipSeparators $ string "::="
     ids <- skipSeparators $ parseIds
+    index <- optionMaybe $ try parseIndex
     objectName <- getState
     putState []
-    return (ObjectType objectName syntax ac stat ids)
+    return (ObjectType objectName syntax ac stat ids index)
 
 parseSequence = do
     string "SEQUENCE"
