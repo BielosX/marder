@@ -77,6 +77,7 @@ data ObjId = NumberId Integer | CharSeq String deriving (Eq, Show)
 
 data Entry = IdDecl String EntryId |
              ObjType ObjectType |
+             TypeDef String Type |
              Sequence String (Map.Map String Type) deriving (Eq, Show)
 
 data IndexTreeEntry = IndexTreeEntry {
@@ -270,6 +271,13 @@ parseType = do
         (fmap OctString $ try parseOctetString) <|>
         parseEntryRefWithConstraint
 
+parseTypeDef = do
+    skipSeparators $ string "::="
+    t <- parseType
+    objectName <- getState
+    putState []
+    return $ TypeDef objectName t
+
 parseEntry :: Parsec [Char] ObjectName Entry
 parseEntry = do
     identifier <- skipSeparators $ do
@@ -277,7 +285,9 @@ parseEntry = do
         rest <- many (letter <|> digit <|> char '-')
         return $ letterPrefix ++ rest
     putState identifier
-    (fmap ObjType $ try parseObjectType) <|> parseObjIdAssign
+    (fmap ObjType $ try parseObjectType) <|>
+        try parseObjIdAssign <|>
+        parseSequence
 
 parseCharSeqId = do
     letterPrefix <- many1 letter
