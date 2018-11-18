@@ -1,6 +1,13 @@
 module Main where
 
+import Text.Parsec
+import System.Environment
+
 import Lib
 
 main :: IO ()
-main = putStrLn "Hello World"
+main = do
+    [name] <- getArgs
+    text <- readFile name
+    let result = runParser parseMib [] "" text
+    putStrLn $ show result

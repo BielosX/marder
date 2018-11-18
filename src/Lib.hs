@@ -158,7 +158,7 @@ parseImports = do
 entryIdentifier = many1 (letter <|> digit <|> char '-')
 
 comment :: Parsec [Char] u ()
-comment = between (string "--") newline $ skipMany1 $ noneOf "\n"
+comment = between (string "--") newline $ skipMany $ noneOf "\n"
 
 separator = space <|> newline
 
@@ -202,17 +202,21 @@ statusField = try mandatory <|>
               obsolete
 
 nwln = do
-    newline
+    endOfLine
     return ()
 
 spc = do
     space
     return ()
 
+tabulator = do
+    tab
+    return ()
+
 skipSeparators expr = do
     skipMany separator
     r <- expr
-    skipMany (comment <|> nwln <|> spc)
+    skipMany (comment <|> nwln <|> spc <|> tabulator)
     return r
 
 braces = between (char '(') (char ')')
@@ -287,7 +291,8 @@ parseEntry = do
     putState identifier
     (fmap ObjType $ try parseObjectType) <|>
         try parseObjIdAssign <|>
-        parseSequence
+        try parseSequence <|>
+        parseTypeDef
 
 parseCharSeqId = do
     letterPrefix <- many1 letter
@@ -326,7 +331,7 @@ parseObjIdAssign = do
 parseIndex = do
     string "INDEX"
     spaces
-    ids <- skipSeparators $ curlyBraces $ sepBy1 entryIdentifier commaSep
+    ids <- skipSeparators $ curlyBraces $ sepBy1 (skipSeparators entryIdentifier) commaSep
     return $ SeqIndex ids
 
 parseObjectType :: Parsec [Char] ObjectName ObjectType
@@ -337,11 +342,11 @@ parseObjectType = do
     skipSeparators $ string "ACCESS"
     ac <- accessField
     skipSeparators $ string "STATUS"
-    stat <- statusField
+    stat <- skipSeparators $ statusField
     Text.Parsec.optional $ try skipDescription
+    index <- optionMaybe $ try $ skipSeparators parseIndex
     skipSeparators $ string "::="
     ids <- skipSeparators $ parseIds
-    index <- optionMaybe $ try parseIndex
     objectName <- getState
     putState []
     return (ObjectType objectName syntax ac stat ids index)
@@ -387,8 +392,7 @@ parseSequence = do
     putState []
     return $ Sequence objectName $ Map.fromList s
     where f = do
-            name <- many1 letter
-            spaces
-            t <- parseType
+            name <- skipSeparators $ many1 letter
+            t <- skipSeparators $ parseType
             return (name, t)
 

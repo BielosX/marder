@@ -29,6 +29,7 @@ main = hspec $ do
                         \ \"Some text \n\
                         \   more text \n\
                         \ \" \n\
+                        \ INDEX { idx } \n\
                         \ ::= { interfaces 1 }"
         let withObjId = "ifNumber OBJECT-TYPE \n\
                             \ SYNTAX  OBJECT IDENTIFIER \n\
@@ -185,12 +186,17 @@ main = hspec $ do
     describe "parse sequence" $ do
         it "parse sequence" $ do
             let seq = "SEQUENCE { \n\
-                        \ el INTEGER, \n\
-                        \ elTwo INTEGER \n\
+                        \ el \n\
+                        \    INTEGER, \n\
+                        \ elTwo INTEGER, \n\
+                        \ elThree \n\
+                        \        Counter \n\
                         \ }"
 
             let r = runParser parseSequence "sequence" "" seq
-            let l = Map.fromList [("el", Integer JustInteger), ("elTwo", Integer JustInteger)]
+            let l = Map.fromList [("el", Integer JustInteger),
+                                    ("elTwo", Integer JustInteger),
+                                    ("elThree", EntryRefWithConstraint "Counter" None)]
             parsed r $ \s -> s `shouldBe` (Sequence "sequence" l)
 
 
