@@ -44,6 +44,11 @@ data Type = Integer IntegerType |
             EntryReference EntryRef |
             SequenceOf EntryRef deriving (Eq, Show)
 
+data TypeConstraint = None |
+                      StringRange Integer Integer |
+                      StringExact Integer |
+                      IntegerRange Integer Integer deriving (Eq, Show)
+
 type EntryRef = String
 
 newtype SeqIndex = SeqIndex [EntryRef] deriving (Eq, Show)
@@ -200,14 +205,8 @@ curlyBraces = between (char '{') (char '}')
 
 parseIntegerRange = do
     skipSeparators $ string "INTEGER"
-    (f,s) <- braces $ do
-            f <- skipSeparators $ many1 digit
-            string ".."
-            s <- skipSeparators $ many1 digit
-            return (f,s)
-    let fstInt = read f :: Integer
-    let sndInt = read s :: Integer
-    return $ Range fstInt sndInt
+    (f,s) <- parseRange
+    return $ Range f s
 
 parseSingleEnumItem = do
     id <- skipSeparators $ many1 letter
@@ -319,6 +318,16 @@ parseObjectType = do
     objectName <- getState
     putState []
     return (ObjectType objectName syntax ac stat ids index)
+
+parseRange = do
+    (f,s) <- braces $ do
+            f <- skipSeparators $ many1 digit
+            string ".."
+            s <- skipSeparators $ many1 digit
+            return (f,s)
+    let fstInt = read f :: Integer
+    let sndInt = read s :: Integer
+    return (fstInt, sndInt)
 
 parseSequence = do
     string "SEQUENCE"
