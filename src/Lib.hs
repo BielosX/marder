@@ -229,9 +229,8 @@ parseIntegerRange = do
     return $ Range f s
 
 parseSingleEnumItem = do
-    id <- skipSeparators $ many1 letter
-    val <- braces $ many1 digit
-    skipMany separator
+    id <- skipSeparators $ entryIdentifier
+    val <- skipSeparators $ braces $ many1 digit
     let int = read val :: Integer
     return (id, int)
 
@@ -386,7 +385,8 @@ parseRange = do
     return (fstInt, sndInt)
 
 parseSequence = do
-    string "SEQUENCE"
+    string "::="
+    skipSeparators $ string "SEQUENCE"
     s <- skipSeparators $ curlyBraces $ sepBy1 (skipSeparators f) commaSep
     objectName <- getState
     putState []

@@ -112,9 +112,10 @@ main = hspec $ do
 
         it "Reads enum" $ do
             let text = " INTEGER { \n\
-                        \ other(1),\n\
-                        \ local(2) }"
-            (parse parseIntegerType "" text) `shouldBe` (Right $ Enum [("other",1), ("local", 2)])
+                        \ ddn-x25(1), --some comment\n\
+                        \ local(2) --some comment \n\
+                        \ }"
+            (parse parseIntegerType "" text) `shouldBe` (Right $ Enum [("ddn-x25",1), ("local", 2)])
 
     describe "parse IDs" $ do
         let text = "{ system ip 1 }"
@@ -185,20 +186,23 @@ main = hspec $ do
 
     describe "parse sequence" $ do
         it "parse sequence" $ do
-            let seq = "SEQUENCE { \n\
+            let seq = "ifEntry ::= \n\
+                        \ SEQUENCE { \n\
                         \ el \n\
                         \    INTEGER, \n\
                         \ elTwo INTEGER, \n\
                         \ elThree \n\
-                        \        Counter \n\
+                        \        Counter, \n\
+                        \ elF \n\
+                        \        OBJECT IDENTIFIER \n\
                         \ }"
 
-            let r = runParser parseSequence "sequence" "" seq
+            let r = runParser parseEntry [] "" seq
             let l = Map.fromList [("el", Integer JustInteger),
                                     ("elTwo", Integer JustInteger),
-                                    ("elThree", EntryRefWithConstraint "Counter" None)]
-            parsed r $ \s -> s `shouldBe` (Sequence "sequence" l)
-
+                                    ("elThree", EntryRefWithConstraint "Counter" None),
+                                    ("elF", ObjectIdentifier)]
+            parsed r $ \s -> s `shouldBe` (Sequence "ifEntry" l)
 
     describe "parse OCTET STRING" $ do
         it "parse just octet string" $ do
