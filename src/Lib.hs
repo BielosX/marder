@@ -134,6 +134,10 @@ insertEntry entry@(IdDecl name id) tree = EntryTree (indexTree tree) (Map.insert
     where lookup = nameLookup tree
 insertEntry entry@(ObjType objType) tree = let n = name objType in
     EntryTree (indexTree tree) (Map.insert n entry (nameLookup tree))
+insertEntry entry@(Sequence name _) tree = _insertEntry name entry tree
+insertEntry entry@(TypeDef name _) tree = _insertEntry name entry tree
+
+_insertEntry name entry tree = EntryTree (indexTree tree) (Map.insert name entry (nameLookup tree))
 
 _parseMib :: EntryTree -> Parsec [Char] ObjectName EntryTree
 _parseMib tree = do
