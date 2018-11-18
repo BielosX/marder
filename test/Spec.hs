@@ -192,3 +192,16 @@ main = hspec $ do
             let l = Map.fromList [("el", Integer JustInteger), ("elTwo", Integer JustInteger)]
             parsed r $ \s -> s `shouldBe` (Sequence "sequence" l)
 
+
+    describe "parse OCTET STRING" $ do
+        it "parse just octet string" $ do
+            let t = "OCTET STRING \n ACCESS"
+            (parse parseOctetString "" t) `shouldBe` (Right $ JustString)
+
+        it "parse bound octet string" $ do
+            let t = "OCTET STRING (SIZE (0..255)) \n ACCESS"
+            (parse parseOctetString "" t) `shouldBe` (Right $ BoundSize 0 255)
+
+        it "parse strict size octet string" $ do
+            let t = "OCTET STRING (SIZE (4)) \n ACCESS"
+            (parse parseOctetString "" t) `shouldBe` (Right $ StrictSize 4)

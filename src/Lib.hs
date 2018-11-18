@@ -21,7 +21,9 @@ module Lib
       insertNameToIndexTree,
       getNameFromIndexTree,
       indexTreeRoot,
-      parseSequence
+      parseSequence,
+      parseOctetString,
+      OctetString(..)
     ) where
 
 import Text.Parsec
@@ -39,8 +41,14 @@ data Status = Mandatory | Optional | Obsolete deriving (Eq, Show)
 data IntegerType = JustInteger | Range Integer Integer | Enum [(String, Integer)]
     deriving (Eq, Show)
 
+data OctetString = JustString |
+                   BoundSize Integer Integer |
+                   StrictSize Integer deriving (Eq, Show)
+
+
 data Type = Integer IntegerType |
             ObjectIdentifier |
+            OctString OctetString |
             EntryReference EntryRef |
             SequenceOf EntryRef deriving (Eq, Show)
 
@@ -318,6 +326,28 @@ parseObjectType = do
     objectName <- getState
     putState []
     return (ObjectType objectName syntax ac stat ids index)
+
+parseOctetString = do
+    skipSeparators $ string "OCTET STRING"
+    c <- skipSeparators $ parseConstraint
+    case c of
+        (StringExact i) -> return $ StrictSize i
+        (StringRange x y) -> return $ BoundSize x y
+        None -> return JustString
+
+parseConstraint = option None $ parseOctetStringConstraint
+
+parseOctetStringConstraint = do
+    skipSeparators $ braces $ do
+        string "SIZE"
+        (fmap toRange $ try $ skipSeparators $ parseRange) <|>
+            (fmap StringExact $ skipSeparators $ parseOctetStringStrictValue)
+    where toRange (a,b) = StringRange a b
+
+parseOctetStringStrictValue = braces $ do
+    val <- skipSeparators $ many1 digit
+    let v = read val :: Integer
+    return v
 
 parseRange = do
     (f,s) <- braces $ do
