@@ -37,7 +37,10 @@ type EntryId = [ObjId]
 
 data Access = ReadOnly | ReadWrite | WriteOnly | NotAccessible deriving (Eq, Show)
 
-data Status = Mandatory | Optional | Obsolete deriving (Eq, Show)
+data Status = Mandatory |
+              Optional |
+              Obsolete |
+              Deprecated  deriving (Eq, Show)
 
 data IntegerType = JustInteger | Range Integer Integer | Enum [(String, Integer)]
     deriving (Eq, Show)
@@ -196,9 +199,14 @@ obsolete = do
     string "obsolete"
     return Obsolete
 
+deprecated = do
+    string "deprecated"
+    return Deprecated
+
 statusField :: Parsec [Char] u Status
 statusField = try mandatory <|>
               try Lib.optional <|>
+              try deprecated <|>
               obsolete
 
 nwln = do
@@ -392,7 +400,7 @@ parseSequence = do
     putState []
     return $ Sequence objectName $ Map.fromList s
     where f = do
-            name <- skipSeparators $ many1 letter
+            name <- skipSeparators $ entryIdentifier
             t <- skipSeparators $ parseType
             return (name, t)
 
