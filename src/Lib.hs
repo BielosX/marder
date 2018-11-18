@@ -146,7 +146,13 @@ parseMib = do
     spaces
     string "::="
     spaces
-    between (string "BEGIN") (string "END") $ _parseMib $ EntryTree indexTreeRoot mib2Root
+    between (string "BEGIN") (string "END") $ do
+         Text.Parsec.optional $ try parseImports
+         _parseMib $ EntryTree indexTreeRoot mib2Root
+
+-- skip imports for now
+parseImports = do
+    skipSeparators $ between (string "IMPORTS") (char ';') $ skipMany1 (noneOf ";")
 
 entryIdentifier = many1 (letter <|> digit <|> char '-')
 
