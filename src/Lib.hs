@@ -23,7 +23,8 @@ module Lib
       indexTreeRoot,
       parseSequence,
       parseOctetString,
-      OctetString(..)
+      OctetString(..),
+      TypeConstraint(..)
     ) where
 
 import Text.Parsec
@@ -49,7 +50,7 @@ data OctetString = JustString |
 data Type = Integer IntegerType |
             ObjectIdentifier |
             OctString OctetString |
-            EntryReference EntryRef |
+            EntryRefWithConstraint EntryRef TypeConstraint |
             SequenceOf EntryRef deriving (Eq, Show)
 
 data TypeConstraint = None |
@@ -251,15 +252,17 @@ parseSequenceOf = do
     entry <- entryIdentifier
     return $ SequenceOf entry
 
-parseEntryRef = do
+parseEntryRefWithConstraint = do
     ref <- skipSeparators $ entryIdentifier
-    return $ EntryReference ref
+    c <- skipSeparators $ parseConstraint
+    return $ EntryRefWithConstraint ref c
 
 parseType = do
     (fmap Integer $ try parseIntegerType) <|>
         try parseObjectId <|>
         try parseSequenceOf <|>
-        parseEntryRef
+        (fmap OctString $ try parseOctetString) <|>
+        parseEntryRefWithConstraint
 
 parseEntry :: Parsec [Char] ObjectName Entry
 parseEntry = do
@@ -335,7 +338,9 @@ parseOctetString = do
         (StringRange x y) -> return $ BoundSize x y
         None -> return JustString
 
-parseConstraint = option None $ parseOctetStringConstraint
+parseConstraint = option None $ do
+     try parseOctetStringConstraint <|>
+         (fmap (\(a,b) -> IntegerRange a b)  $ parseRange)
 
 parseOctetStringConstraint = do
     skipSeparators $ braces $ do

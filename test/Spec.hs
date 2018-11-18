@@ -87,7 +87,8 @@ main = hspec $ do
 
         it "Reads entry reference" $ do
             let result = runParser parseEntry [] "" withEntryRef
-            parsed result $ isObjType $ syntax `fieldShouldBe` (EntryReference "IfEntry")
+            let exp = (EntryRefWithConstraint "IfEntry" None)
+            parsed result $ isObjType $ syntax `fieldShouldBe` exp
 
     describe "skip description" $ do
         let desc = " DESCRIPTION \"Some text \n\
