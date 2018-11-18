@@ -102,7 +102,13 @@ mib2Root = Map.fromList [
     ("mgmt", IdDecl "mgmt" (fmap NumberId [1,3,6,1,2]))
     ]
 
-indexTreeRoot = IndexTreeEntry "root" Map.empty
+
+mgmt = IndexTreeEntry "mgmt" Map.empty
+internet = IndexTreeEntry "internet" $ Map.fromList [(2, mgmt)]
+dod = IndexTreeEntry "dod" $ Map.fromList [(1, internet)]
+org = IndexTreeEntry "org" $ Map.fromList [(6, dod)]
+iso = IndexTreeEntry "iso" $ Map.fromList [(3, org)]
+indexTreeRoot = IndexTreeEntry "root" $ Map.fromList [(1, iso)]
 
 getEntryId :: Entry -> [ObjId]
 getEntryId (IdDecl name eid) = eid
@@ -130,10 +136,14 @@ getNameFromIndexTree [] (IndexTreeEntry name _) = Just name
 getNameFromIndexTree (x:xs) (IndexTreeEntry _ children) = (Map.lookup x children) >>= getNameFromIndexTree xs
 
 insertEntry :: Entry -> EntryTree -> EntryTree
-insertEntry entry@(IdDecl name id) tree = EntryTree (indexTree tree) (Map.insert name entry lookup)
+insertEntry entry@(IdDecl name id) tree = EntryTree newTree (Map.insert name entry lookup)
     where lookup = nameLookup tree
-insertEntry entry@(ObjType objType) tree = let n = name objType in
-    EntryTree (indexTree tree) (Map.insert n entry (nameLookup tree))
+          newTree = insertNameToIndexTree name (getFullId id lookup) (indexTree tree)
+insertEntry entry@(ObjType objType) tree = EntryTree newTree (Map.insert n entry (nameLookup tree))
+    where   n = name objType
+            id = entryId objType
+            lookup = nameLookup tree
+            newTree = insertNameToIndexTree n (getFullId id lookup) (indexTree tree)
 insertEntry entry@(Sequence name _) tree = _insertEntry name entry tree
 insertEntry entry@(TypeDef name _) tree = _insertEntry name entry tree
 
