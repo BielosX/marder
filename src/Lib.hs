@@ -103,8 +103,15 @@ mib2Root = Map.fromList [
     ]
 
 
+directory = IndexTreeEntry "directory" Map.empty
 mgmt = IndexTreeEntry "mgmt" Map.empty
-internet = IndexTreeEntry "internet" $ Map.fromList [(2, mgmt)]
+experimental = IndexTreeEntry "experimental" Map.empty
+enterprises = IndexTreeEntry "enterprises" Map.empty
+private = IndexTreeEntry "private" $ Map.fromList [(1, enterprises)]
+internet = IndexTreeEntry "internet" $ Map.fromList [(1, directory),
+                                                    (2, mgmt),
+                                                    (3, experimental),
+                                                    (4, private)]
 dod = IndexTreeEntry "dod" $ Map.fromList [(1, internet)]
 org = IndexTreeEntry "org" $ Map.fromList [(6, dod)]
 iso = IndexTreeEntry "iso" $ Map.fromList [(3, org)]
