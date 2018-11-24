@@ -24,7 +24,8 @@ module Lib
       parseSequence,
       parseOctetString,
       OctetString(..),
-      TypeConstraint(..)
+      TypeConstraint(..),
+      IndexTreeEntry(..)
     ) where
 
 import Text.Parsec
