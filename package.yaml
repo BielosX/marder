@@ -24,7 +24,7 @@ dependencies:
 - hspec
 - parsec
 - containers
-- gtk3
+- mtl
 
 library:
   source-dirs: src

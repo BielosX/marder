@@ -4,6 +4,7 @@ import Text.Parsec
 import System.Environment
 import Data.List
 import qualified Data.Map.Strict as Map
+import Control.Monad.State.Lazy as State
 
 import Lib
 
@@ -22,27 +23,31 @@ entries = fmap snd . Map.toList
 
 hasChildren = not . null . getChildren
 
-nxt  = "|    "
-nxtS = "     "
+showEntry (IndexTreeEntry n _) p = (concat p) ++ "--- " ++ n ++ "\n"
 
-showEntry :: IndexTreeEntry -> [String] -> String
-showEntry (IndexTreeEntry n _) prefix = (concat $ reverse prefix) ++ "--- " ++ n ++ "\n"
+sp = "    |"
+li = "|   "
 
-tailIfPossible :: [a] -> [a]
-tailIfPossible [] = []
-tailIfPossible (x:xs) = xs
+removeLastPrefix = reverse . drop 1 . reverse
 
-newPrefix p children last | children && last = "|":nxtS:(tailIfPossible p)
-                          | children = nxt:p
-                          | last = tailIfPossible p
-                          | otherwise = p
+markLast [] = []
+markLast (x:[]) = [(True, x)]
+markLast (x:xs) = (False, x):(markLast xs)
 
-_showTree :: [[IndexTreeEntry]] -> [String] -> [String]
-_showTree [] _ = []
-_showTree ((x:[]):ys) p | hasChildren x = (showEntry x p):(_showTree ([(getChildren x)] ++ ys) (newPrefix p True True))
-                        | otherwise = (showEntry x p):(_showTree ys (newPrefix p False True))
-_showTree ((x:xs):ys) p | hasChildren x = (showEntry x p):(_showTree ([(getChildren x)] ++ [xs] ++ ys) (newPrefix p True False))
-                        | otherwise = (showEntry x p):(_showTree ([xs] ++ ys) (newPrefix p False False))
+_showTree :: IndexTreeEntry -> Bool -> State.State [String] [String]
+_showTree e@(IndexTreeEntry n c) last = do
+    prefix <- get
+    let entry = showEntry e prefix
+    if hasChildren e then
+        if last then
+            put (prefix ++ [sp])
+        else put (prefix ++ [sp])
+    else put prefix
+    let children = markLast $ getChildren e
+    c <- mapM (\(a,b) -> _showTree b a) children
+    if last then
+        put (removeLastPrefix prefix)
+    else put prefix
+    return ([entry] ++ (concat c))
 
-showTree (IndexTreeEntry n c) = concat $ _showTree [entries c] ["|"]
-
+showTree e = concat $ fst $ runState (_showTree e True) ["|"]
