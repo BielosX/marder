@@ -25,8 +25,8 @@ hasChildren = not . null . getChildren
 
 showEntry (IndexTreeEntry n _) p = (concat p) ++ "--- " ++ n ++ "\n"
 
-sp = "    |"
-li = "|   "
+sp = (take 4 $ repeat ' ') ++ "|"
+li = take 5 $ repeat ' '
 
 removeLastPrefix = reverse . drop 1 . reverse
 
@@ -40,7 +40,7 @@ _showTree e@(IndexTreeEntry n c) last = do
     let entry = showEntry e prefix
     if hasChildren e then
         if last then
-            put (prefix ++ [sp])
+            put ((removeLastPrefix prefix) ++ [li] ++ [sp])
         else put (prefix ++ [sp])
     else put prefix
     let children = markLast $ getChildren e
