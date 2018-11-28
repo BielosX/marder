@@ -216,3 +216,17 @@ main = hspec $ do
         it "parse strict size octet string" $ do
             let t = "OCTET STRING (SIZE (4)) \n ACCESS"
             (parse parseOctetString "" t) `shouldBe` (Right $ StrictSize 4)
+
+    describe "parse type def" $ do
+        it "parse type def without optional fields" $ do
+            let t = "::= OCTET STRING"
+            let expected = TypeDef "newType" (OctString JustString) noTypeDefOptionals
+            let result = runParser parseTypeDef "newType" "" t
+            parsed result $ \x -> x `shouldBe` expected
+
+        it "parse type def with all optional fields" $ do
+            let t = "::= [APPLICATION 3] IMPLICIT INTEGER"
+            let optionals = TypeDefOptionals (Just Application) (Just Implicit) (Just 3)
+            let expected = TypeDef "newType" (Integer JustInteger) optionals
+            let result = runParser parseTypeDef "newType" "" t
+            parsed result $ \x -> x `shouldBe` expected

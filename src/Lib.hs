@@ -25,7 +25,12 @@ module Lib
       parseOctetString,
       OctetString(..),
       TypeConstraint(..),
-      IndexTreeEntry(..)
+      IndexTreeEntry(..),
+      parseTypeDef,
+      noTypeDefOptionals,
+      TypeDefOptionals(..),
+      Visibility(..),
+      TagType(..)
     ) where
 
 import Text.Parsec
@@ -33,6 +38,7 @@ import Text.Parsec.Char
 import Data.List
 import qualified Data.Map.Strict as Map
 import Data.Maybe
+import Control.Monad
 
 type EntryId = [ObjId]
 
@@ -79,9 +85,21 @@ type ObjectName = String
 
 data ObjId = NumberId Integer | CharSeq String deriving (Eq, Show)
 
+data TagType = Implicit | Explicit deriving (Eq, Show)
+
+data Visibility = Universal | Application | ContextSpecific | Private deriving (Eq, Show)
+
+data TypeDefOptionals = TypeDefOptionals {
+    visibility :: Maybe Visibility,
+    tagType :: Maybe TagType,
+    tagNumber :: Maybe Integer
+} deriving (Eq, Show)
+
+noTypeDefOptionals = TypeDefOptionals Nothing Nothing Nothing
+
 data Entry = IdDecl String EntryId |
              ObjType ObjectType |
-             TypeDef String Type |
+             TypeDef String Type TypeDefOptionals |
              Sequence String (Map.Map String Type) deriving (Eq, Show)
 
 data IndexTreeEntry = IndexTreeEntry {
@@ -153,7 +171,7 @@ insertEntry entry@(ObjType objType) tree = EntryTree newTree (Map.insert n entry
             lookup = nameLookup tree
             newTree = insertNameToIndexTree n (getFullId id lookup) (indexTree tree)
 insertEntry entry@(Sequence name _) tree = _insertEntry name entry tree
-insertEntry entry@(TypeDef name _) tree = _insertEntry name entry tree
+insertEntry entry@(TypeDef name _ _) tree = _insertEntry name entry tree
 
 _insertEntry name entry tree = EntryTree (indexTree tree) (Map.insert name entry (nameLookup tree))
 
@@ -251,6 +269,9 @@ skipSeparators expr = do
 
 braces = between (char '(') (char ')')
 
+squareBrackets :: Parsec [Char] u a -> Parsec [Char] u a
+squareBrackets = between (char '[') (char ']')
+
 curlyBraces = between (char '{') (char '}')
 
 parseIntegerRange = do
@@ -304,12 +325,53 @@ parseType = do
         (fmap OctString $ try parseOctetString) <|>
         parseEntryRefWithConstraint
 
+parseApplicationVisibility = do
+    string "APPLICATION"
+    return Application
+
+parseUniversalVisibility = do
+    string "UNIVERSAL"
+    return Universal
+
+parseContextSpecificVisibility = do
+    string "CONTEXT-SPECIFIC"
+    return ContextSpecific
+
+parsePrivateVisibility = do
+    string "PRIVATE"
+    return Private
+
+parseExplicit = do
+    string "EXPLICIT"
+    return Explicit
+
+parseImplicit = do
+    string "IMPLICIT"
+    return Implicit
+
+parseTagNumberAndVisibility :: Parsec [Char] a (Maybe Visibility, Maybe Integer)
+parseTagNumberAndVisibility = do
+    squareBrackets $ do
+        v <- skipSeparators $ optionMaybe $ try parseApplicationVisibility <|>
+                              try parseUniversalVisibility <|>
+                              try parseContextSpecificVisibility <|>
+                              parsePrivateVisibility
+        i <- skipSeparators $ optionMaybe $ many1 digit
+        let val = fmap (read :: String -> Integer) i
+        if (isNothing v) && (isNothing i) then
+            fail "Either visibility or tag value should be provided"
+        else return (v, val)
+
 parseTypeDef = do
     skipSeparators $ string "::="
+    tnv <- skipSeparators $ optionMaybe parseTagNumberAndVisibility
+    c <- skipSeparators $ optionMaybe $ (parseExplicit <|> parseImplicit)
     t <- parseType
     objectName <- getState
     putState []
-    return $ TypeDef objectName t
+    case tnv of
+        Nothing -> return $ TypeDef objectName t (TypeDefOptionals Nothing c Nothing)
+        (Just (a,b)) -> return $ TypeDef objectName t (TypeDefOptionals a c b)
 
 parseEntry :: Parsec [Char] ObjectName Entry
 parseEntry = do
