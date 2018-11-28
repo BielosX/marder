@@ -230,3 +230,10 @@ main = hspec $ do
             let expected = TypeDef "newType" (Integer JustInteger) optionals
             let result = runParser parseTypeDef "newType" "" t
             parsed result $ \x -> x `shouldBe` expected
+
+        it "parse only tag number" $ do
+            let t = "::= [3] INTEGER"
+            let optionals = TypeDefOptionals Nothing Nothing (Just 3)
+            let expected = TypeDef "newType" (Integer JustInteger) optionals
+            let result = runParser parseTypeDef "newType" "" t
+            parsed result $ \x -> x `shouldBe` expected

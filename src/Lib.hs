@@ -365,7 +365,7 @@ parseTagNumberAndVisibility = do
 parseTypeDef = do
     skipSeparators $ string "::="
     tnv <- skipSeparators $ optionMaybe parseTagNumberAndVisibility
-    c <- skipSeparators $ optionMaybe $ (parseExplicit <|> parseImplicit)
+    c <- skipSeparators $ optionMaybe $ try $ (parseExplicit <|> parseImplicit)
     t <- parseType
     objectName <- getState
     putState []
