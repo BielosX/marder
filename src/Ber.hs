@@ -8,11 +8,13 @@ import Data.Bits
 import Data.Word
 import Text.Read
 import Data.Int
+import Control.Monad
 
 import Lib
 
 data Value = IntegerValue Int |
-             StringValue String deriving (Eq, Show)
+             StringValue String |
+             ObjectIdentifier [Int] deriving (Eq, Show)
 
 negative x = (.&.) x 0x80 > 0
 positive = not . negative
@@ -62,6 +64,11 @@ markBytes a False (x:xs) = markBytes ((x .|. 0x80):a) False xs
 
 encodeIntegerOnSeven = markBytes [] True . reverse . encodeOnSeven . reverse . skipLeadingZeroes
 
+encodeFirstOIDByte :: [Int] -> Word8
+encodeFirstOIDByte [] = 0
+encodeFirstOIDByte (x:[]) = (fromIntegral :: Int -> Word8) $ x * 40
+encodeFirstOIDByte (x:y:xs) = (fromIntegral :: Int -> Word8) $ x * 40 + y
+
 encodeLongLen :: Int -> PutM ()
 encodeLongLen l = do
     let value = skipLeadingZeroes l
@@ -82,6 +89,15 @@ instance Binary.Binary Value where
             Binary.put $ (fromIntegral :: Int64 -> Int8) $ B.length value
         else encodeLongLen $ (fromIntegral :: Int64 -> Int) $ B.length value
         putLazyByteString value
+
+    put (Ber.ObjectIdentifier i) = do
+        let first = encodeFirstOIDByte $ take 2 i
+        let rest = join $ fmap encodeIntegerOnSeven $ drop 2 i
+        let whole = first:rest
+        let len = length whole
+        if len < 128 then Binary.put $ (fromIntegral :: Int -> Int8) len
+        else encodeLongLen len
+        mapM_ Binary.put whole
 
     get = fail "not implemented yet"
 
