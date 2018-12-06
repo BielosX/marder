@@ -9,12 +9,25 @@ import Data.Word
 import Text.Read
 import Data.Int
 import Control.Monad
-
-import Lib
+import System.Endian
 
 data Value = IntegerValue Int |
              StringValue String |
              ObjectIdentifier [Int] deriving (Eq, Show)
+
+data TagClass = Universal |
+                Application |
+                ContextSpecific |
+                Private deriving (Eq, Show)
+
+data TagType = Primitive | Constructed deriving (Eq, Show)
+
+data Frame = Frame {
+    value :: Value,
+    tagClass :: TagClass,
+    tagType :: Ber.TagType,
+    tagNumber :: Maybe Int
+    } deriving (Eq, Show)
 
 negative x = (.&.) x 0x80 > 0
 positive = not . negative
@@ -76,6 +89,41 @@ encodeLongLen l = do
     let b = 0x80 :: Word8
     Binary.put $ b + bytes
     mapM_ Binary.put value
+
+tagClassMask :: TagClass -> Word8
+tagClassMask Universal = 0
+tagClassMask Application = 0x40
+tagClassMask ContextSpecific = 0x80
+tagClassMask Private = 0xC0
+
+tagTypeMask :: TagType -> Word8
+tagTypeMask Primitive = 0
+tagTypeMask Constructed = 0x20
+
+primitiveTagNumber :: Value -> Word8
+primitiveTagNumber (IntegerValue _) = 2
+primitiveTagNumber (StringValue _) = 4
+primitiveTagNumber (ObjectIdentifier _) = 6
+
+getTagNumber :: Frame -> Word8
+getTagNumber f = case tagNumber f of
+                        Nothing -> primitiveTagNumber $ value f
+                        (Just n) -> (fromIntegral :: Int -> Word8) n
+
+instance Binary.Binary Frame where
+    put f = do
+        if tagType f == Primitive then do
+            let v = (tagTypeMask Primitive) .|. (tagClassMask $ tagClass f)
+            Binary.put $ v .|. (getTagNumber f)
+            Binary.put $ value f
+        else do
+            let v = Binary.encode $ value f
+            let tag = (tagTypeMask Constructed) .|. (tagClassMask $ tagClass f)
+            Binary.put $ tag .|. (getTagNumber f)
+            Binary.put $ (fromIntegral :: Int64 -> Word8) $ B.length v
+            putLazyByteString v
+
+    get = fail "not implemented yet"
 
 instance Binary.Binary Value where
     put (IntegerValue i) = do

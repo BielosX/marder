@@ -25,6 +25,9 @@ dependencies:
 - parsec
 - containers
 - mtl
+- cpu
+- binary
+- bytestring
 
 library:
   source-dirs: src
