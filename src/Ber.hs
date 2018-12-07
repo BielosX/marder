@@ -27,7 +27,7 @@ data Frame = Frame {
     tagClass :: TagClass,
     tagType :: Ber.TagType,
     tagNumber :: Maybe Int
-    } deriving (Eq, Show)
+    } | Sequence [Frame] deriving (Eq, Show)
 
 negative x = (.&.) x 0x80 > 0
 positive = not . negative
@@ -111,17 +111,25 @@ getTagNumber f = case tagNumber f of
                         (Just n) -> (fromIntegral :: Int -> Word8) n
 
 instance Binary.Binary Frame where
-    put f = do
-        if tagType f == Primitive then do
-            let v = (tagTypeMask Primitive) .|. (tagClassMask $ tagClass f)
+    put f@(Frame value tagClass tagType tagNumber) = do
+        if tagType == Primitive then do
+            let v = (tagTypeMask Primitive) .|. (tagClassMask tagClass)
             Binary.put $ v .|. (getTagNumber f)
-            Binary.put $ value f
+            Binary.put $ value
         else do
-            let v = Binary.encode $ value f
-            let tag = (tagTypeMask Constructed) .|. (tagClassMask $ tagClass f)
+            let v = Binary.encode $ value
+            let tag = (tagTypeMask Constructed) .|. (tagClassMask tagClass)
             Binary.put $ tag .|. (getTagNumber f)
             Binary.put $ (fromIntegral :: Int64 -> Word8) $ B.length v
             putLazyByteString v
+
+    put (Sequence s) = do
+        let v = fmap Binary.encode s
+        Binary.put $ (tagTypeMask Constructed) .|. 0x10
+        let len = foldr (+) 0 $ fmap B.length v
+        if len < 128 then Binary.put $ (fromIntegral :: Int64 -> Int8) len
+        else encodeLongLen $ (fromIntegral :: Int64 -> Int) len
+        mapM_ putLazyByteString v
 
     get = fail "not implemented yet"
 
