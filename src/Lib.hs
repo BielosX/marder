@@ -31,7 +31,8 @@ module Lib
       TypeDefOptionals(..),
       Visibility(..),
       TagType(..),
-      runParseMib
+      runParseMib,
+      getEntry
     ) where
 
 import Text.Parsec
@@ -149,6 +150,14 @@ _getFullId entry a l = case entry of
     where sqEntry sq = fmap (reverse . getEntryId) $ Map.lookup sq l
 
 getFullId e l = _getFullId (reverse e) [] l
+
+_getEntry :: AbsId -> IndexTreeEntry -> NameLookupMap -> Maybe Entry
+_getEntry [] (IndexTreeEntry name _) m = Map.lookup name m
+_getEntry (x:xs) (IndexTreeEntry _ children) m = do
+         treeEntry <- Map.lookup x children
+         _getEntry xs treeEntry m
+
+getEntry absId entryTree = _getEntry absId (indexTree entryTree) (nameLookup entryTree)
 
 insertNameToIndexTree :: String -> AbsId -> IndexTreeEntry -> IndexTreeEntry
 insertNameToIndexTree name [] tree = tree
