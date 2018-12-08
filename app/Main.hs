@@ -25,10 +25,20 @@ opts argv = case getOpt Permute options argv of
                 (o, _, []) -> Right o
                 (_, _, errs) -> Left $ concat errs
 
+_checkRequired :: [Flag] -> Map.Map String Bool  -> Either String ()
+_checkRequired [] m | foldr (&&) True m = Right ()
+                    | otherwise = Left "Please provide all required args"
+_checkRequired ((MibFile _):xs) m = _checkRequired xs $ Map.update (\a -> Just True) "mib" m
+_checkRequired (x:xs) m = _checkRequired xs m
+
+checkRequired f = _checkRequired f (Map.fromList [("mib", False)])
+
 _main :: ExceptT String IO ()
 _main = do
     argv <- lift $ getArgs
-    (MibFile name) <- liftEither $ fmap (head . filter isMibFile) (opts argv)
+    args <- liftEither $ opts argv
+    liftEither $ checkRequired args
+    let (MibFile name) = (head . filter isMibFile) args
     text <- lift $ readFile name
     let result = runParser parseMib [] "" text
     case result of
