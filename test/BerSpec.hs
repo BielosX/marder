@@ -19,7 +19,7 @@ berSpec = do
                     let v = IntegerValue 5
                     encoded v `shouldBe` [1, 5]
 
-                it "should encode encode octet string" $ do
+                it "should encode octet string" $ do
                     let v = StringValue "xvi"
                     encoded v `shouldBe` [3, cToW8 'x', cToW8 'v', cToW8 'i']
 
