@@ -7,6 +7,7 @@ import qualified Data.Map.Strict as Map
 import Control.Monad.State.Lazy as State
 import System.Console.GetOpt
 import System.IO.Error
+import Control.Monad.Except
 
 import Lib
 
@@ -19,19 +20,27 @@ options :: [OptDescr Flag]
 options = [
     Option [] ["mib"] (ReqArg MibFile "MIB") "mib file path"]
 
+opts :: [String] -> Either String [Flag]
 opts argv = case getOpt Permute options argv of
-                (o, _, []) -> return o
-                (_, _, errs) -> ioError $ userError $ concat errs
+                (o, _, []) -> Right o
+                (_, _, errs) -> Left $ concat errs
+
+_main :: ExceptT String IO ()
+_main = do
+    argv <- lift $ getArgs
+    (MibFile name) <- liftEither $ fmap (head . filter isMibFile) (opts argv)
+    text <- lift $ readFile name
+    let result = runParser parseMib [] "" text
+    case result of
+        (Left e) -> lift $ putStrLn $ show e
+        (Right r) -> lift $ putStrLn $ showTree (indexTree r)
 
 main :: IO ()
 main = do
-    argv <- getArgs
-    (MibFile name) <- fmap (head . filter isMibFile) (opts argv)
-    text <- readFile name
-    let result = runParser parseMib [] "" text
-    case result of
-        (Left e) -> putStrLn $ show e
-        (Right r) -> putStrLn $ showTree (indexTree r)
+    r <- runExceptT _main
+    case r of
+        (Left s) -> putStrLn s
+        (Right _) -> return ()
 
 getChildren (IndexTreeEntry n c) = entries c
 
