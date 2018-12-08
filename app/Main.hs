@@ -5,12 +5,28 @@ import System.Environment
 import Data.List
 import qualified Data.Map.Strict as Map
 import Control.Monad.State.Lazy as State
+import System.Console.GetOpt
+import System.IO.Error
 
 import Lib
 
+data Flag = MibFile String | InputValue String
+
+isMibFile (MibFile _) = True
+isMibFile _ = False
+
+options :: [OptDescr Flag]
+options = [
+    Option [] ["mib"] (ReqArg MibFile "MIB") "mib file path"]
+
+opts argv = case getOpt Permute options argv of
+                (o, _, []) -> return o
+                (_, _, errs) -> ioError $ userError $ concat errs
+
 main :: IO ()
 main = do
-    [name] <- getArgs
+    argv <- getArgs
+    (MibFile name) <- fmap (head . filter isMibFile) (opts argv)
     text <- readFile name
     let result = runParser parseMib [] "" text
     case result of
