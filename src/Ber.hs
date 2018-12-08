@@ -47,16 +47,18 @@ _encodeInteger = removeRedundancy . B.unpack . Binary.encode
 
 skipLeadingZeroes = dropWhile (\x -> x == 0) . B.unpack . Binary.encode
 
-lastBit = (flip rotate) (-7) . (.&.) 0x80
+lastBit :: Word8 -> Word8
+lastBit = (flip shiftR) 7 . (.&.) 0x80
 
 getNFirst :: Int -> Word8 -> Word8
-getNFirst n w = (rotate 0xFF (-8+n)) .&. w
+getNFirst n w = (s 0xFF n) .&. w
+    where s = shiftR :: Word8 -> Int -> Word8
 
 getNLast :: Int -> Word8 -> Word8
-getNLast n w = (flip rotate) (-8+n) ((rotate 0xFF (8-n)) .&. w)
+getNLast n w = (flip shiftR) n ((shiftL 0xFF n) .&. w)
 
 blend :: (Int, Word8) -> Word8 -> ((Int, Word8), Word8)
-blend (v, w) a = ((carryBits, getNLast carryBits a), ((flip rotate) v $ getNFirst toTake a) .|. w)
+blend (v, w) a = ((carryBits, getNLast carryBits a), ((flip shiftL) v $ getNFirst toTake a) .|. w)
     where toTake = 7 - v
           carryBits = 8 - toTake
 

@@ -20,3 +20,11 @@ berSpec = do
                 it "should encode encode octet string" $ do
                     let v = StringValue "xvi"
                     (B.unpack $ encode v) `shouldBe` [3, cToW8 'x', cToW8 'v', cToW8 'i']
+
+                it "should encode simple OID" $ do
+                    let v = ObjectIdentifier [1,2,3]
+                    (B.unpack $ encode v) `shouldBe` [2, 42, 3]
+
+                it "should encode OID with big number" $ do
+                    let v = ObjectIdentifier [1,2,500]
+                    (B.unpack $ encode v) `shouldBe` [3, 42, 0x83, 0x74]
