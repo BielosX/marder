@@ -8,6 +8,7 @@ import Control.Monad.State.Lazy as State
 import System.Console.GetOpt
 import System.IO.Error
 import Control.Monad.Except
+import Data.Bifunctor
 
 import Lib
 
@@ -40,10 +41,8 @@ _main = do
     liftEither $ checkRequired args
     let (MibFile name) = (head . filter isMibFile) args
     text <- lift $ readFile name
-    let result = runParser parseMib [] "" text
-    case result of
-        (Left e) -> lift $ putStrLn $ show e
-        (Right r) -> lift $ putStrLn $ showTree (indexTree r)
+    result <- liftEither $ first show $ runParseMib text
+    lift $ putStrLn $ showTree (indexTree result)
 
 main :: IO ()
 main = do

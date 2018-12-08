@@ -30,7 +30,8 @@ module Lib
       noTypeDefOptionals,
       TypeDefOptionals(..),
       Visibility(..),
-      TagType(..)
+      TagType(..),
+      runParseMib
     ) where
 
 import Text.Parsec
@@ -181,6 +182,8 @@ _parseMib tree = do
     case entry of
         Nothing -> return tree
         (Just e) -> _parseMib (insertEntry e tree)
+
+runParseMib = runParser parseMib [] ""
 
 parseMib = do
     spaces
