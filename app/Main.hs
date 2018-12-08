@@ -19,7 +19,8 @@ isMibFile _ = False
 
 options :: [OptDescr Flag]
 options = [
-    Option [] ["mib"] (ReqArg MibFile "MIB") "mib file path"]
+    Option [] ["mib"] (ReqArg MibFile "MIB") "mib file path",
+    Option [] ["value"] (ReqArg InputValue "VALUE") "value"]
 
 opts :: [String] -> Either String [Flag]
 opts argv = case getOpt Permute options argv of
@@ -30,9 +31,11 @@ _checkRequired :: [Flag] -> Map.Map String Bool  -> Either String ()
 _checkRequired [] m | foldr (&&) True m = Right ()
                     | otherwise = Left "Please provide all required args"
 _checkRequired ((MibFile _):xs) m = _checkRequired xs $ Map.update (\a -> Just True) "mib" m
-_checkRequired (x:xs) m = _checkRequired xs m
+_checkRequired ((InputValue _):xs) m = _checkRequired xs $ Map.update (\a -> Just True) "value" m
 
-checkRequired f = _checkRequired f (Map.fromList [("mib", False)])
+required = Map.fromList $ fmap (\a -> (a, False)) $ ["mib", "value"]
+
+checkRequired f = _checkRequired f required
 
 _main :: ExceptT String IO ()
 _main = do
