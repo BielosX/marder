@@ -9,41 +9,55 @@ import System.Console.GetOpt
 import System.IO.Error
 import Control.Monad.Except
 import Data.Bifunctor
+import Data.Bool
+import Data.Maybe
 
 import Lib
+import EncoderDecoder
 
-data Flag = MibFile String | InputValue String
-
-isMibFile (MibFile _) = True
-isMibFile _ = False
+data Flag = MibFile String | InputValue String | Tree
 
 options :: [OptDescr Flag]
 options = [
     Option [] ["mib"] (ReqArg MibFile "MIB") "mib file path",
-    Option [] ["value"] (ReqArg InputValue "VALUE") "value"]
+    Option [] ["value"] (ReqArg InputValue "VALUE") "value",
+    Option ['t'] ["tree"] (NoArg Tree) "show tree"]
 
 opts :: [String] -> Either String [Flag]
 opts argv = case getOpt Permute options argv of
                 (o, _, []) -> Right o
                 (_, _, errs) -> Left $ concat errs
 
-_checkRequired :: [Flag] -> Map.Map String Bool  -> Either String ()
-_checkRequired [] m | foldr (&&) True m = Right ()
-                    | otherwise = Left "Please provide all required args"
-_checkRequired ((MibFile _):xs) m = _checkRequired xs $ Map.update (\a -> Just True) "mib" m
-_checkRequired ((InputValue _):xs) m = _checkRequired xs $ Map.update (\a -> Just True) "value" m
+maybeHead :: [a] -> Maybe a
+maybeHead [] = Nothing
+maybeHead (x:xs) = Just x
 
-required = Map.fromList $ fmap (\a -> (a, False)) $ ["mib", "value"]
+_updateArgsMap :: Flag -> Map.Map String Flag -> Either String (Map.Map String Flag)
+_updateArgsMap a@(MibFile _) m | Map.member "mib" m = Left "argument MIB defined more than once"
+                             | otherwise = Right $ Map.insert "mib" a m
+_updateArgsMap a@(InputValue _) m | Map.member "value" m = Left "argument VALUE defined more than once"
+                                  | otherwise = Right $ Map.insert "value" a m
+_updateArgsMap a@(Tree) m | Map.member "tree" m = Left "TREE flag defined more than once"
+                          | otherwise = Right $ Map.insert "tree" a m
 
-checkRequired f = _checkRequired f required
+_argsMap :: Map.Map String Flag -> [Flag] -> Either String (Map.Map String Flag)
+_argsMap m [] = Right m
+_argsMap m (x:xs) = do
+    newMap <- _updateArgsMap x m
+    _argsMap newMap xs
+
+argsMap = _argsMap Map.empty
+
+getMibFilePath :: Map.Map String Flag -> Either String String
+getMibFilePath m = maybe (Left "please provide path to MIB file") (\(MibFile s) -> Right s) $ Map.lookup "mib" m
 
 _main :: ExceptT String IO ()
 _main = do
     argv <- lift $ getArgs
     args <- liftEither $ opts argv
-    liftEither $ checkRequired args
-    let (MibFile name) = (head . filter isMibFile) args
-    text <- lift $ readFile name
+    argMap <- liftEither $ argsMap args
+    path <- liftEither $ getMibFilePath argMap
+    text <- lift $ readFile path
     result <- liftEither $ first show $ runParseMib text
     lift $ putStrLn $ showTree (indexTree result)
 

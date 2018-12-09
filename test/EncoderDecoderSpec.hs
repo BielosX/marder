@@ -25,4 +25,11 @@ encoderDecoderSpec = do
                             it "returns Left when type check error" $ do
                                 let obj = template $ object "INTEGER"
                                 let tree = getRight $ runParseMib obj
-                                encodeValue tree "text" [1,3,6,1,2,1] `shouldBe` (Left "error: expected value type INTEGER")
+                                let expected = Left "error: expected value type INTEGER"
+                                encodeValue tree "text" [1,3,6,1,2,1] `shouldBe` expected
+
+                            it "returns Left when integer is smaller" $ do
+                                let obj = template $ object "INTEGER (10..15)"
+                                let tree = getRight $ runParseMib obj
+                                let expected = Left "error: INTEGER out of range"
+                                encodeValue tree "5" [1,3,6,1,2,1] `shouldBe` expected
