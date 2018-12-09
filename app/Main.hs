@@ -100,7 +100,7 @@ doEncode :: EntryTree -> EncodeState -> ExceptT String IO ()
 doEncode t (OidAndValueProvided (a,b)) = do
     value <- liftEither $ encodeValue t b a
     lift $ putStrLn $ unwords $ fmap (printf "0x%02X") $ B.unpack value
-doEncode t _ = liftEither $ Left "worng state"
+doEncode t _ = liftEither $ Left "wrong state"
 
 encodeValueIfNeeded :: Map.Map String Flag ->  EntryTree -> ExceptT String IO ()
 encodeValueIfNeeded m t =  do
