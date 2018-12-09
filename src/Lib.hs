@@ -32,7 +32,8 @@ module Lib
       Visibility(..),
       TagType(..),
       runParseMib,
-      getEntry
+      getEntry,
+      AbsId
     ) where
 
 import Text.Parsec
