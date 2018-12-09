@@ -51,6 +51,12 @@ argsMap = _argsMap Map.empty
 getMibFilePath :: Map.Map String Flag -> Either String String
 getMibFilePath m = maybe (Left "please provide path to MIB file") (\(MibFile s) -> Right s) $ Map.lookup "mib" m
 
+treeFlagEnabled m = Map.member "tree" m
+
+showTreeIfNeeded :: Map.Map String Flag -> EntryTree -> IO ()
+showTreeIfNeeded m tree | treeFlagEnabled m = putStrLn $ showTree (indexTree tree)
+                        | otherwise = return ()
+
 _main :: ExceptT String IO ()
 _main = do
     argv <- lift $ getArgs
@@ -59,7 +65,7 @@ _main = do
     path <- liftEither $ getMibFilePath argMap
     text <- lift $ readFile path
     result <- liftEither $ first show $ runParseMib text
-    lift $ putStrLn $ showTree (indexTree result)
+    lift $ showTreeIfNeeded argMap result
 
 main :: IO ()
 main = do
