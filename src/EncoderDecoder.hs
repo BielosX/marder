@@ -15,6 +15,10 @@ mapIntegerValue :: String -> IntegerType -> Either String Ber.Value
 mapIntegerValue s JustInteger = do
      v <- maybe notInteger Right $ (readMaybe :: String -> Maybe Int) s
      return $ IntegerValue v
+mapIntegerValue s (Range o c) = do
+     v <- maybe notInteger Right $ (readMaybe :: String -> Maybe Integer) s
+     if v <= c && v >= o then return $ IntegerValue $ (fromIntegral :: Integer -> Int) v
+     else Left "error: INTEGER out of range"
 mapIntegerValue _ _ = Left "not supported"
 
 mapValue :: String -> Entry -> Either String Ber.Value
