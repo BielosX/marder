@@ -1,5 +1,6 @@
 module EncoderDecoderSpec where
 
+import qualified Data.ByteString.Lazy as B
 import Test.Hspec
 import Data.Either
 
@@ -39,3 +40,10 @@ encoderDecoderSpec = do
                                 let tree = getRight $ runParseMib obj
                                 let expected = Left "error: INTEGER out of range"
                                 encodeValue tree "20" [1,3,6,1,2,1] `shouldBe` expected
+
+                        describe "encode value" $ do
+                            it "encodes enum" $ do
+                                let obj = template $ object "INTEGER { one(1), two(2) }"
+                                let tree = getRight $ runParseMib obj
+                                let expected = Right $ B.pack [1, 1]
+                                encodeValue tree "one" [1,3,6,1,2,1] `shouldBe` expected

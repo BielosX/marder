@@ -2,6 +2,7 @@ module EncoderDecoder where
 
 import qualified Data.ByteString.Lazy as B
 import qualified Data.Binary as Binary
+import qualified Data.Map.Strict as Map
 import Data.Maybe
 import Text.Read
 
@@ -11,15 +12,23 @@ import Ber
 noEntry = Left "no entry with specified id"
 notInteger = Left "error: expected value type INTEGER"
 
+toInt = maybe notInteger Right . (readMaybe :: String -> Maybe Integer)
+
 mapIntegerValue :: String -> IntegerType -> Either String Ber.Value
 mapIntegerValue s JustInteger = do
      v <- maybe notInteger Right $ (readMaybe :: String -> Maybe Int) s
      return $ IntegerValue v
 mapIntegerValue s (Range o c) = do
-     v <- maybe notInteger Right $ (readMaybe :: String -> Maybe Integer) s
+     v <- toInt s
      if v <= c && v >= o then return $ IntegerValue $ (fromIntegral :: Integer -> Int) v
      else Left "error: INTEGER out of range"
-mapIntegerValue _ _ = Left "not supported"
+mapIntegerValue s (Enum l) = do
+     let nameToVal = Map.fromList l
+     case Map.lookup s nameToVal of
+            Nothing -> do
+                v <- toInt s
+                return $ IntegerValue $ (fromIntegral :: Integer -> Int) $ v
+            (Just value) -> return $ IntegerValue $ (fromIntegral :: Integer -> Int) value
 
 mapValue :: String -> Entry -> Either String Ber.Value
 mapValue s (ObjType o) = do
