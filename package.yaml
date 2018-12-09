@@ -28,6 +28,7 @@ dependencies:
 - cpu
 - binary
 - bytestring
+- split
 
 library:
   source-dirs: src
