@@ -11,8 +11,19 @@ import Ber
 
 noEntry = Left "no entry with specified id"
 notInteger = Left "error: expected value type INTEGER"
+noEntryRef a = Left $ a ++ "not specified"
+
+getTypeDef :: Entry -> Either String (Type, TypeDefOptionals)
+getTypeDef (TypeDef _ t o) = Right $ (t, o)
+getTypeDef _ = Left "specified entry is not a type definition"
 
 toInt = maybe notInteger Right . (readMaybe :: String -> Maybe Integer)
+
+constrToIntegerType :: TypeConstraint -> Either String IntegerType
+constrToIntegerType None = Right $ JustInteger
+constrToIntegerType (StringRange _ _)  = Left "wrong constraint type"
+constrToIntegerType (StringExact _) = Left "wrong constraint type"
+constrToIntegerType (IntegerRange o c) = Right $ Range o c
 
 mapIntegerValue :: String -> IntegerType -> Either String Ber.Value
 mapIntegerValue s JustInteger = do
@@ -30,16 +41,27 @@ mapIntegerValue s (Enum l) = do
                 return $ IntegerValue $ (fromIntegral :: Integer -> Int) $ v
             (Just value) -> return $ IntegerValue $ (fromIntegral :: Integer -> Int) value
 
-mapValue :: String -> Entry -> Either String Ber.Value
-mapValue s (ObjType o) = do
+mapEntryRef :: String -> EntryRef -> TypeConstraint -> EntryTree -> Either String Ber.Value
+mapEntryRef s ref constr t = do
+    entry <- maybe (noEntryRef ref) Right $ Map.lookup ref $ nameLookup t
+    (eType, optionals) <- getTypeDef entry
+    case eType of
+        (Integer i) -> do
+                    ty <- constrToIntegerType constr
+                    mapIntegerValue s ty
+        _ -> Left "not supported"
+
+mapValue :: String -> Entry -> EntryTree -> Either String Ber.Value
+mapValue s (ObjType o) tree = do
         let t = syntax o
         case t of
             (Integer i) -> mapIntegerValue s i
+            (EntryRefWithConstraint ref c) -> mapEntryRef s ref c tree
             _ -> Left "not supported"
-mapValue s _ = Left "not supported"
+mapValue s _ _ = Left "not supported"
 
 encodeValue :: EntryTree -> String -> AbsId -> Either String B.ByteString
 encodeValue tree value absId = do
     entry <- maybe noEntry Right $ getEntry absId tree
-    value <- mapValue value entry
+    value <- mapValue value entry tree
     return $ Binary.encode value

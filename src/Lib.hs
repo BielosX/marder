@@ -33,7 +33,8 @@ module Lib
       TagType(..),
       runParseMib,
       getEntry,
-      AbsId
+      AbsId,
+      EntryRef
     ) where
 
 import Text.Parsec
@@ -119,10 +120,22 @@ data EntryTree = EntryTree {
 
 type AbsId = [Integer]
 
+appImplicit i = TypeDefOptionals (Just Application) (Just Implicit) (Just i)
+
+ipAddress = TypeDef "IpAddress" (OctString $ StrictSize 4) (appImplicit 0)
+counter = TypeDef "Counter" (Integer $ Range 0 4294967295) (appImplicit 1)
+gauge = TypeDef "Gauge" (Integer $ Range 0 4294967295) (appImplicit 2)
+timeTicks = TypeDef "TimeTicks" (Integer $ Range 0 4294967295) (appImplicit 3)
+opaque = TypeDef "Opaque" (OctString JustString) (appImplicit 4)
+
 mib2Root :: NameLookupMap
 mib2Root = Map.fromList [
-    ("mgmt", IdDecl "mgmt" (fmap NumberId [1,3,6,1,2]))
-    ]
+    ("mgmt", IdDecl "mgmt" (fmap NumberId [1,3,6,1,2])),
+    ("IpAddress", ipAddress),
+    ("Counter", counter),
+    ("Gauge", gauge),
+    ("TimeTicks", timeTicks),
+    ("Opaque", opaque)]
 
 
 directory = IndexTreeEntry "directory" Map.empty
