@@ -41,21 +41,24 @@ mapIntegerValue s (Enum l) = do
                 return $ IntegerValue $ (fromIntegral :: Integer -> Int) $ v
             (Just value) -> return $ IntegerValue $ (fromIntegral :: Integer -> Int) value
 
-mapEntryRef :: String -> EntryRef -> TypeConstraint -> EntryTree -> Either String Ber.Value
+mapEntryRef :: String -> EntryRef -> TypeConstraint -> EntryTree -> Either String Ber.Frame
 mapEntryRef s ref constr t = do
     entry <- maybe (noEntryRef ref) Right $ Map.lookup ref $ nameLookup t
     (eType, optionals) <- getTypeDef entry
     case eType of
         (Integer i) -> do
                     ty <- constrToIntegerType constr
-                    mapIntegerValue s ty
+                    fmap integerToFrame $ mapIntegerValue s ty
         _ -> Left "not supported"
 
-mapValue :: String -> Entry -> EntryTree -> Either String Ber.Value
-mapValue s (ObjType o) tree = do
+integerToFrame :: Ber.Value -> Ber.Frame
+integerToFrame v = Frame v Ber.Universal Primitive Nothing
+
+mapFrame :: String -> Entry -> EntryTree -> Either String Ber.Frame
+mapFrame s (ObjType o) tree = do
         let t = syntax o
         case t of
-            (Integer i) -> mapIntegerValue s i
+            (Integer i) -> fmap integerToFrame $ mapIntegerValue s i
             (EntryRefWithConstraint ref c) -> mapEntryRef s ref c tree
             _ -> Left "not supported"
 mapValue s _ _ = Left "not supported"
@@ -63,5 +66,5 @@ mapValue s _ _ = Left "not supported"
 encodeValue :: EntryTree -> String -> AbsId -> Either String B.ByteString
 encodeValue tree value absId = do
     entry <- maybe noEntry Right $ getEntry absId tree
-    value <- mapValue value entry tree
+    value <- mapFrame value entry tree
     return $ Binary.encode value
