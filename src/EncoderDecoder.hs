@@ -48,11 +48,27 @@ mapEntryRef s ref constr t = do
     case eType of
         (Integer i) -> do
                     ty <- constrToIntegerType constr
-                    fmap integerToFrame $ mapIntegerValue s ty
+                    fmap (applyTypeDefOpt optionals . integerToFrame) $ mapIntegerValue s ty
         _ -> Left "not supported"
 
 integerToFrame :: Ber.Value -> Ber.Frame
 integerToFrame v = Frame v Ber.Universal Primitive Nothing
+
+mapTagType :: Maybe Lib.TagType -> Ber.TagType
+mapTagType Nothing = Primitive
+mapTagType (Just Implicit) = Primitive
+mapTagType (Just Explicit) = Constructed
+
+mapVisibility Lib.Universal = Ber.Universal
+mapVisibility Lib.Application = Ber.Application
+mapVisibility Lib.ContextSpecific = Ber.ContextSpecific
+mapVisibility Lib.Private = Ber.Private
+
+applyTypeDefOpt :: TypeDefOptionals -> Ber.Frame -> Ber.Frame
+applyTypeDefOpt opt f = f { Ber.tagClass = vis, Ber.tagType = tType, Ber.tagNumber = tNum }
+    where vis = fromMaybe (tagClass f) (fmap mapVisibility $ visibility opt)
+          tType = mapTagType $ Lib.tagType opt
+          tNum = fmap (fromIntegral :: Integer -> Int) (Lib.tagNumber opt)
 
 mapFrame :: String -> Entry -> EntryTree -> Either String Ber.Frame
 mapFrame s (ObjType o) tree = do
