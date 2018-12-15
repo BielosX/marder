@@ -3,6 +3,7 @@ module EncoderDecoder where
 import qualified Data.ByteString.Lazy as B
 import qualified Data.Binary as Binary
 import qualified Data.Map.Strict as Map
+import Data.List.Split
 import Data.Maybe
 import Text.Read
 
@@ -15,6 +16,7 @@ noEntryRef a = Left $ a ++ "not specified"
 wrongConstr = Left "wrong constraint type"
 wrongStrSize s = Left $ "error: STRING size should be exactly " ++ (show s)
 strSizeOutOfRange = Left "error: STRING size out of range"
+wrongOidFormat = Left "wrong OID format"
 
 getTypeDef :: Entry -> Either String (Type, TypeDefOptionals)
 getTypeDef (TypeDef _ t o) = Right $ (t, o)
@@ -92,11 +94,16 @@ mapVisibility Lib.Application = Ber.Application
 mapVisibility Lib.ContextSpecific = Ber.ContextSpecific
 mapVisibility Lib.Private = Ber.Private
 
+stringToOid :: String -> Maybe [Int]
+stringToOid = mapM (readMaybe :: String -> Maybe Int) . splitOn "."
+
 applyTypeDefOpt :: TypeDefOptionals -> Ber.Frame -> Ber.Frame
 applyTypeDefOpt opt f = f { Ber.tagClass = vis, Ber.tagType = tType, Ber.tagNumber = tNum }
     where vis = fromMaybe (tagClass f) (fmap mapVisibility $ visibility opt)
           tType = mapTagType $ Lib.tagType opt
           tNum = fmap (fromIntegral :: Integer -> Int) (Lib.tagNumber opt)
+
+oidToFrame = primitiveToFrame . Ber.ObjectIdentifier
 
 mapFrame :: String -> Entry -> EntryTree -> Either String Ber.Frame
 mapFrame s (ObjType o) tree = do
@@ -105,6 +112,7 @@ mapFrame s (ObjType o) tree = do
             (Integer i) -> fmap primitiveToFrame $ mapIntegerValue s i
             (EntryRefWithConstraint ref c) -> mapEntryRef s ref c tree
             (OctString v) -> fmap primitiveToFrame $ mapOctStringValue s v
+            Lib.ObjectIdentifier -> maybe wrongOidFormat (Right . oidToFrame) $ stringToOid s
             _ -> Left "not supported"
 mapValue s _ _ = Left "not supported"
 
