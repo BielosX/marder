@@ -4,6 +4,7 @@ import qualified Data.ByteString.Lazy as B
 import qualified Data.ByteString.Lazy.Char8 as C
 import qualified Data.Binary as Binary
 import Data.Binary.Put
+import Data.Binary.Get
 import Data.Bits
 import Data.Word
 import Text.Read
@@ -112,6 +113,12 @@ getTagNumber f = case tagNumber f of
                         Nothing -> primitiveTagNumber $ value f
                         (Just n) -> (fromIntegral :: Int -> Word8) n
 
+toClass :: Word8 -> TagClass
+toClass 0 = Universal
+toClass 1 = Application
+toClass 2 = ContextSpecific
+toClass 3 = Private
+
 instance Binary.Binary Frame where
     put f@(Frame value tagClass tagType tagNumber) = do
         if tagType == Primitive then do
@@ -133,7 +140,25 @@ instance Binary.Binary Frame where
         else encodeLongLen $ (fromIntegral :: Int64 -> Int) len
         mapM_ putLazyByteString v
 
-    get = fail "not implemented yet"
+    get = do
+        t <- lookAhead $ (Binary.get :: Binary.Get Word8)
+        let tType = (flip shiftR) 5 $ t .&. 0x20
+        let tClass = (flip shiftR) 6 $ t .&. 0xC0
+        if tType > 0 then fail "not implemented yet"
+        else do
+            value <- Binary.get :: Binary.Get Value
+            return $ Frame value (toClass tClass) Primitive Nothing
+
+_getOfLen :: [Word8] -> Int -> Binary.Get [Word8]
+_getOfLen a 0 = return $ reverse a
+_getOfLen a n = do
+        t <- Binary.get :: Binary.Get Word8
+        _getOfLen (t:a) (n-1)
+
+getOfLen = _getOfLen []
+
+word8ToChar a = toEnum v :: Char
+    where v = (fromIntegral :: Word8 -> Int) a
 
 instance Binary.Binary Value where
     put (IntegerValue i) = do
@@ -157,5 +182,15 @@ instance Binary.Binary Value where
         else encodeLongLen len
         mapM_ Binary.put whole
 
-    get = fail "not implemented yet"
+    get = do
+        t <- Binary.get :: Binary.Get Word8
+        let tagN = t .&. 0x1F
+        l <- Binary.get :: Binary.Get Word8
+        let len = (fromIntegral :: Word8 -> Int) l
+        case tagN of
+            0x02 -> fail "not implemented yet"
+            0x04 -> do
+                v <- getOfLen len
+                return $ StringValue $ fmap word8ToChar v
+            0x06 -> fail "not implemented yet"
 

@@ -13,6 +13,8 @@ cToW8 = (fromIntegral :: Int -> Word8) . ord
 
 encoded = B.unpack . encode
 
+decodeFrame = decode :: B.ByteString -> Frame
+
 berSpec = do
             describe "encode" $ do
                 it "should encode primitive integer type" $ do
@@ -30,3 +32,9 @@ berSpec = do
                 it "should encode OID with big number" $ do
                     let v = ObjectIdentifier [1,2,500]
                     encoded v `shouldBe` [3, 42, 0x83, 0x74]
+
+            describe "decode" $ do
+                it "should decode octet string" $ do
+                    let v = B.pack [4, 3, cToW8 'x', cToW8 'v', cToW8 'i']
+                    let f = Frame (StringValue "xvi") Universal Primitive Nothing
+                    decodeFrame v `shouldBe` f
