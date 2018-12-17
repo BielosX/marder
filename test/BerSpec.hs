@@ -38,3 +38,19 @@ berSpec = do
                     let v = B.pack [4, 3, cToW8 'x', cToW8 'v', cToW8 'i']
                     let f = Frame (StringValue "xvi") Universal Primitive Nothing
                     decodeFrame v `shouldBe` f
+
+                it "should decode positive integer value" $ do
+                    let v = B.pack [2, 2, 0x01, 0xFF]
+                    let f = Frame (IntegerValue 511) Universal Primitive Nothing
+                    decodeFrame v `shouldBe` f
+
+                it "should decode negative integer value" $ do
+                    let v = B.pack [2, 2, 0xFF, 0x7F]
+                    let f = Frame (IntegerValue (-129)) Universal Primitive Nothing
+                    decodeFrame v `shouldBe` f
+
+                it "should decode one byte negative integer value" $ do
+                    let v = B.pack [2, 1, 0x81]
+                    let f = Frame (IntegerValue (-127)) Universal Primitive Nothing
+                    decodeFrame v `shouldBe` f
+

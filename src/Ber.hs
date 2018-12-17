@@ -160,6 +160,15 @@ getOfLen = _getOfLen []
 word8ToChar a = toEnum v :: Char
     where v = (fromIntegral :: Word8 -> Int) a
 
+_decodeInt :: Bool -> Int -> [Word8] -> Int
+_decodeInt _ _ [] = 0
+_decodeInt a n (x:xs) | (x .&. 0x80) > 0 && a  = (-p) * (256 - v) + (_decodeInt True (n-1) xs)
+                      | otherwise = p * v + (_decodeInt False (n-1) xs)
+    where   p = 256^n
+            v = (fromIntegral :: Word8 -> Int) x
+
+decodeInt = _decodeInt True
+
 instance Binary.Binary Value where
     put (IntegerValue i) = do
         let value = _encodeInteger i
@@ -188,7 +197,9 @@ instance Binary.Binary Value where
         l <- Binary.get :: Binary.Get Word8
         let len = (fromIntegral :: Word8 -> Int) l
         case tagN of
-            0x02 -> fail "not implemented yet"
+            0x02 -> do
+                v <- getOfLen len
+                return $ IntegerValue $ decodeInt (len-1) v
             0x04 -> do
                 v <- getOfLen len
                 return $ StringValue $ fmap word8ToChar v
