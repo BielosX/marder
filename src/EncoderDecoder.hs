@@ -121,3 +121,36 @@ encodeValue tree value absId = do
     entry <- maybe noEntry Right $ getEntry absId tree
     value <- mapFrame value entry tree
     return $ Binary.encode value
+
+validateType :: Type -> Ber.Value -> Either String ()
+validateType (Integer _) (IntegerValue _)  = return ()
+validateType (Integer _) (StringValue _) = Left "error: expected INTEGER provided OCTET STRING"
+validateType (Integer _) (Ber.ObjectIdentifier _) = Left "error: expected INTEGER provided OID"
+validateType (OctString _) (IntegerValue _) = Left "error: expected OCTET STRING provided INTEGER"
+validateType (OctString _) (StringValue _) = return ()
+validateType (OctString _) (Ber.ObjectIdentifier _) = Left "error: expected OCTET STRING provided OID"
+validateType Lib.ObjectIdentifier (Ber.ObjectIdentifier _) = return ()
+validateType Lib.ObjectIdentifier (IntegerValue _) = Left "error: expected OID provided INTEGER"
+validateType Lib.ObjectIdentifier (StringValue _) = Left "error: expected OID provided OCTET STRING"
+
+checkIntegerConstr :: IntegerType -> Ber.Value -> Either String ()
+checkIntegerConstr JustInteger (IntegerValue _) = return ()
+checkIntegerConstr (Range o c) (IntegerValue v) = let value = (fromIntegral :: Int -> Integer) v in
+                                        if value >= o && value <= c then return ()
+                                        else Left "error: INTEGER out of range"
+checkIntegerConstr (Enum _) (IntegerValue _) = return ()
+checkIntegerConstr _ _ = Left "wrong type"
+
+decodeValue :: EntryTree -> B.ByteString -> AbsId -> Either String Ber.Frame
+decodeValue tree value absId = do
+    entry <- maybe noEntry Right $ getEntry absId tree
+    case entry of
+        (ObjType t) -> do
+                let f = (Binary.decode :: B.ByteString -> Frame) value
+                validateType (syntax t) (Ber.value f)
+                case syntax t of
+                    (Integer i) -> checkIntegerConstr i (Ber.value f)
+                    _ -> Left "not supported yet"
+                return f
+        _ -> Left "not supported"
+
